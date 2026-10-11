@@ -5026,7 +5026,7 @@ function boot(){
   if(has){
     S=emptyState();
     if(!load()){
-      try{if(failedCurrent)localStorage.setItem(SAVE_KEY+".failed",failedCurrent);}catch(e){}
+      try{if(failedCurrent&&localStorage.getItem(SAVE_KEY+".failed")===null)localStorage.setItem(SAVE_KEY+".failed",failedCurrent);}catch(e){}
       newGame();
       if(failedCurrent)lg("読込不能な現行セーブを .failed に退避し、新世界を生成した。");
     }
