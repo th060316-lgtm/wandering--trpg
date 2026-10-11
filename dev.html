@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>流浪冒険者TRPG V4.0 RandomEvents Phase1 Grok Candidate</title>
+<title>流浪冒険者TRPG — 旅と選択</title>
 <style>
 :root{
   --bg:#0c0c0d;--surface:#141416;--surface2:#1c1c20;--fg:#ecece8;--muted:#8e8e87;
@@ -116,6 +116,24 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   #f2PriorityTabs button{flex:1 1 100%;font-size:11px}
   #f2LifeActions button,#f2GuidePanel .f2-guide-actions button{min-width:0;flex:1 1 40%}
 }
+/* HQ player-first UI pass: presentation only. Game rules, Save, RNG and time unchanged. */
+.ux-lead{border-color:#4c6157;background:linear-gradient(135deg,#1b2723 0%,var(--surface) 68%)}
+.ux-eyebrow{font-size:11px;color:#a9c7b7;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+.ux-lead h2{font-size:1.18rem;color:var(--fg);font-weight:650;margin:0 0 9px}
+.ux-story{font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.ux-hint{color:var(--muted);font-size:12px;line-height:1.6;margin:8px 0}
+.ux-choice{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.ux-choice button{flex:1 1 140px}
+.ux-tools summary,.ux-optional summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;color:var(--fg);font-weight:600}
+.ux-tools{margin-top:8px}
+.ux-optional{border-color:var(--border)}
+.ux-tools > div{margin-top:8px}
+.ux-meta{margin-top:6px;max-width:100%;overflow-wrap:anywhere}
+#v4EventsCard:has(#v4EventActions button){border-color:var(--ally);background:#17201c}
+#v4EventActive{line-height:1.75;font-size:14px;white-space:pre-wrap}
+#v4EventActions button{flex:1 1 145px}
+#f1Pane_adv .ux-lead{margin-top:6px}
+@media(max-width:480px){.ux-choice button{flex:1 1 100%}#f1HeaderCard .row{gap:4px}#f1Hud{font-size:11px}}
 /* HQ V3 P2 UX: battle commands and immediate action feedback on adventure page */
 #battleCommandCard{border-color:var(--ally);scroll-margin-top:80px}
 #battleCommandCard[hidden]{display:none}
@@ -158,22 +176,37 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   <div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
-        <div class="s">WANDERING TRPG V3.0 F1 CANDIDATE · UI SHELL (V2 logic)</div>
+        <div class="ux-eyebrow">ひとりの冒険者から始まる、変わり続ける世界</div>
         <h1>流浪冒険者TRPG</h1>
-        <div id="world" class="muted"></div>
+        <details class="ux-tools" aria-label="旅の詳細情報">
+          <summary>旅と世界の詳しい情報</summary>
+          <div id="world" class="muted ux-meta"></div>
+        </details>
       </div>
-      <div class="row">
-        <button type="button" onclick="confirmNewGame()">新世界</button>
-        <button type="button" onclick="save()">保存</button>
-        <button type="button" onclick="load()">読込</button>
-        <button type="button" onclick="load(true)">保存候補一覧</button>
-      </div>
+      <details class="ux-tools" aria-label="保存と新しい世界">
+        <summary>保存・再開・新しい世界</summary>
+        <div class="row">
+          <button type="button" onclick="save()">進行を保存</button>
+          <button type="button" onclick="load()">続きから再開</button>
+          <button type="button" onclick="load(true)">ほかの保存データを選ぶ</button>
+          <button type="button" onclick="confirmNewGame()">新しい世界を始める</button>
+        </div>
+      </details>
     </div>
   </div>
 
 
   </div>
 <section class="f1-pane" id="f1Pane_hub" data-f1-pane="hub" aria-label="拠点・生活">
+  <div class="c ux-lead" id="uxHubGuide">
+    <div class="ux-eyebrow">あなたの旅</div><h2>世界を歩き、何に関わるかを決める</h2>
+    <div id="uxHubStory" class="ux-story">今の状況を確認しています。</div>
+    <div id="uxHubHint" class="ux-hint"></div>
+    <div class="ux-choice">
+      <button type="button" class="primary" onclick="F1Shell.showPane('adv')">冒険へ進む</button>
+      <button type="button" onclick="F1Shell.showPane('world')">地図と噂を見る</button>
+    </div>
+  </div>
 <div class="c">
     <h2>サバイバル</h2>
     <div id="surv" class="row"></div>
@@ -196,8 +229,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   
 
   <div class="c" id="f2LifeCard">
-    <h2>帰還結果・日常（F2 MVP）</h2>
-    <p class="f2-muted">既存の帰還・休養・店・鍛冶を再実行せず表示します。報酬の再付与はしません。3導線で操作先を比較・選択できます。</p>
+    <h2>帰還の記録と、次の旅の準備</h2>
+    <p class="f2-muted">帰還の記録を読み、疲れを癒すか、装備を整えるか、食料を補給するかを選べます。</p>
     <div id="f2Receipt" class="muted">まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。</div>
     <div id="f2CompareBar" aria-live="polite"></div>
     <div id="f2PriorityTabs" role="tablist" aria-label="生活優先導線">
@@ -217,11 +250,18 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       <button type="button" id="f2BtnStay30">30日生活（既存・12通貨）</button>
       <button type="button" id="f2BtnCraft">クラフトを開く</button>
     </div>
-    <p class="f2-muted" style="margin-top:6px">遠征中・戦闘中は拠点の実行系操作を拒否します。修理価格は鍛冶画面で確認。ショップ価格・在庫は既存画面の表示に従い、F2では生成・更新しません。売却・倉庫は未決・次段送り。</p>
+    <details class="ux-tools"><summary>生活機能についての詳しい説明</summary>
+      <p class="f2-muted">遠征中や戦闘中は拠点の操作は使えません。修理価格は鍛冶画面で確認できます。品物の価格と在庫は店の表示に従います。売却・倉庫はまだ利用できません。</p>
+    </details>
   </div>
 
 </section><!-- /f1Pane_hub -->
 <section class="f1-pane" id="f1Pane_adv" data-f1-pane="adv" aria-label="冒険・戦闘">
+  <div class="c ux-lead" id="uxAdventureGuide">
+    <div class="ux-eyebrow">今の冒険</div><h2 id="uxAdventureTitle">あなたはどうする？</h2>
+    <div id="uxAdventureStory" class="ux-story">冒険の現在地を確認しています。</div>
+    <div id="uxAdventureHint" class="ux-hint"></div>
+  </div>
 <div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>依頼</h2>
@@ -237,9 +277,10 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
 
-  <div class="c">
+  <details class="c ux-optional" id="uxTravelOptions">
+    <summary>旅の準備を詳しく選ぶ（目的地・安全・補給・国境）</summary>
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>遠征計画・目的地域</h2>
+      <h2>目的地と移動方針</h2>
       <div class="row">
         <button type="button" id="btnPlanShort" onclick="setExpeditionPlan('shortest')">最短</button>
         <button type="button" id="btnPlanSafe" onclick="setExpeditionPlan('safe')">安全</button>
@@ -263,7 +304,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       <div id="v18AdvisorContent"></div>
     </details>
     <!-- V18_ADVISOR_HTML_END -->
-  </div>
+  </details>
 
   <div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
@@ -277,7 +318,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div class="row" style="margin-top:8px">
       <button type="button" id="btnLocalExplore" onclick="startLocalExploration()" disabled>依頼達成後、現地を調査する（1回）</button>
     </div>
-    <div class="s">現地調査は既存の地域イベントを再利用します。追加戦闘・依頼報酬は発生しません。</div>
+    <details class="ux-tools"><summary>現地調査の注意</summary><p class="s">現地調査は既に起きた出来事を調べる行動です。新しい戦闘や依頼報酬が必ず発生するものではありません。</p></details>
   </div>
 
   <div class="c">
@@ -296,13 +337,13 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 
   <div class="c" id="v4EventsCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>V4 ランダムイベント (Phase1)</h2>
+      <h2>道中で起こる出来事</h2>
       <div class="row">
-        <button type="button" id="btnV4Check" onclick="v4CheckAndDraw()">発生確認・抽選</button>
+        <button type="button" id="btnV4Check" onclick="v4CheckAndDraw()">周囲の様子を確かめる</button>
         <button type="button" id="btnV4History" onclick="v4ShowHistory()">履歴</button>
       </div>
     </div>
-    <div id="v4EventStatus" class="muted">条件を満たすイベントだけ抽選。1日に1回・抽選と選択後に自動保存。</div>
+    <div id="v4EventStatus" class="muted">1日1回、今いる場所で何か起きていないか確かめられます。何も起きない日もあります。</div>
     <div id="v4EventActive" style="margin-top:8px;white-space:pre-wrap"></div>
     <div id="v4EventActions" class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"></div>
   </div>
@@ -339,7 +380,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 <section class="f1-pane" id="f1Pane_party" data-f1-pane="party" aria-label="人物・育成">
 <div class="c" id="socialBox">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>仲間・組織・社会 (V1.5)</h2>
+      <h2>仲間と組織、人間関係</h2>
       <div class="row">
         <button type="button" onclick="openSocial('mem')">仲間記憶</button>
         <button type="button" onclick="openSocial('org')">組織</button>
@@ -367,7 +408,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 
   <!-- V19_PHASE0_UI_BEGIN: planning projection only; world-state is not mutated -->
   <details class="c" id="v19Phase0Box">
-    <summary>V1.9 長期世代世界・百年史／仲間継承／自律冒険者</summary>
+    <summary>長い年月を生きる（家系・継承・世界の歴史）</summary>
     <div class="row" style="margin-top:10px">
       <button type="button" id="v19Stay30" onclick="v19StayDays(30)">長期生活：30日過ごす</button>
       <span class="s">30日滞在は12通貨（食料・水・宿泊を含む）。所持金が不足すると実行不可。</span>
@@ -389,12 +430,12 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 
   <div class="c" id="nationBox">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>国家・国境・インフラ (V1.6 Prototype)</h2>
+      <h2>国家と国境、世界の大きな動き</h2>
       <div class="row">
-        <button type="button" id="btnNation" onclick="openNationUi('nation')">国家Lite</button>
+        <button type="button" id="btnNation" onclick="openNationUi('nation')">国家の状況</button>
         <button type="button" id="btnBorder" onclick="openNationUi('border')">関所・国境</button>
         <button type="button" id="btnInfra" onclick="openNationUi('infra')">インフラ・物流</button>
-        <button type="button" id="btnDisaster" onclick="openNationUi('disaster')">災害・戦争Lite</button>
+        <button type="button" id="btnDisaster" onclick="openNationUi('disaster')">災害・戦争</button>
         <button type="button" id="btnChronicle" onclick="openNationUi('chronicle')">年代記</button>
         <button type="button" id="btnCredit" onclick="openNationUi('credit')">信用・契約</button>
       </div>
@@ -404,7 +445,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
   <details class="c" id="simPanel">
-    <summary>V1.4 世界シミュレーション・経済確認（開発用）</summary>
+    <summary>世界の詳しい記録と検証機能（開発用）</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
     <div class="row"><button type="button" onclick="simDebugDrought()">GM旱魃を投入（制限あり）</button>
     <button type="button" onclick="simExportSave()">Saveファイルを書出</button>
@@ -412,7 +453,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <pre id="simStatus" class="s" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
     <h2>因果履歴（最新80件表示・全履歴はSaveへ保存）</h2><div id="simHistory" class="log"></div>
   </details>
-  <p class="s">Prototype／V1.0の9地域・15装備を継承／V1.5 Social Companion（仲間・組織・社会）</p>
+  <details class="ux-tools"><summary>開発版について</summary><p class="s">この世界は開発中です。旧版で使えた一部の仕組みを引き継ぎながら拡張しています。</p></details>
 
 </section><!-- /f1Pane_world -->
 <section class="f1-pane" id="f1Pane_log" data-f1-pane="log" aria-label="記録・管理">
@@ -723,10 +764,10 @@ function v4RenderActive(){
   if(!st||!act||!acts||!S||!S.v4Events)return;
   const a=S.v4Events.active;
   if(!a || a.resolved){
-    st.textContent='待機中。1日に1回だけ抽選。発生時・選択後は自動保存（保存失敗時はログに表示）。';
+    st.textContent='1日1回、周囲の様子を確かめられます。何も起きないこともあります。行動の結果は記録されます。';
     act.textContent=''; acts.replaceChildren(); return;
   }
-  st.textContent='未解決イベント（自動保存済み・選択待ち） Day '+a.day;
+  st.textContent='対応を待っている出来事 ／ 旅の'+a.day+'日目';
   act.textContent='【'+a.title+'】\n'+a.desc;
   acts.replaceChildren();
   const def=V4_EVENT_DEFS.find(d=>d.eventId===a.eventId);
@@ -5090,6 +5131,34 @@ function render(){
   v18RenderExpeditionAdvisor(); // V18 read-only render hook
   v19RenderPhase0(); // V1.9 Phase0 only
   try{ v4OnRenderHook(); }catch(e){} // V4 Phase1 UI refresh (display only)
+  try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
+}
+
+/* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
+function uxRenderGuide(){
+  if(typeof S==='undefined'||!S)return;
+  const here=S.world ? (S.away ? (typeof activeRegion==='function' ? activeRegion(S) : S.world.region) : S.world.town+'（'+S.world.region+'）') : '未確認';
+  const supplies=S.res||{};
+  const food=Number.isFinite(supplies.food)?supplies.food:'不明';
+  const water=Number.isFinite(supplies.water)?supplies.water:'不明';
+  const fatigue=Number.isFinite(supplies.fatigue)?supplies.fatigue:'不明';
+  const latestRumor=Array.isArray(S.rumors)?S.rumors.filter(r=>r&&typeof r.text==='string'&&(!r.expiresDay||r.expiresDay>=S.day)).slice(-1)[0]:null;
+  const rumor=latestRumor?'耳にした話：「'+latestRumor.text+'」':'新しい噂はまだ聞いていない。';
+  const currentQuest=S.quest?(S.quest.title||'名前のない依頼'):'まだ依頼を選んでいない';
+  let title='次の一歩を選ぶ', step='依頼を選んで出発するか、地図と噂を調べよう。';
+  if(S.battle){title='目の前の戦い';step='味方の行動と対象を選び、「1ターン実行」で進める。危険なら撤退も考えよう。';}
+  else if(S.v4Events?.active){title='目の前の出来事';step='道中で起きた出来事への対応を選ぼう。何を引き受けるかはあなた次第。';}
+  else if(S.away&&S.quest?.done){title='目的を果たしたあと';step='現地をもう少し調べるか、成果を持って拠点へ帰還するか選ぼう。';}
+  else if(S.away&&S.phase==='exploration'){title='道の先で何が起きる？';step='慎重に進むか、急いで踏み込むかを決めよう。結果は状況によって変わる。';}
+  else if(S.away){title='遠征はまだ続く';step='探索・野営・帰還を選べる。いま必要な行動を判断しよう。';}
+  const story='現在地：'+here+' ／ 旅の'+(S.day||1)+'日目\n'+(S.away?'関わっている依頼：':'選んでいる依頼：')+currentQuest+'\n'+step;
+  const hint='手持ち：食料 '+food+'、水 '+water+'、疲労 '+fatigue+'。\n'+rumor;
+  for(const prefix of ['uxHub','uxAdventure']){
+    const e=document.getElementById(prefix+'Story'),h=document.getElementById(prefix+'Hint');
+    if(e)e.textContent=story;
+    if(h)h.textContent=hint;
+  }
+  const t=document.getElementById('uxAdventureTitle');if(t)t.textContent=title;
 }
 
 /* V18_ADVISOR_BEGIN — R5 read-only UI; no ensure*, RNG, game action or Save writes. */
@@ -5867,7 +5936,7 @@ boot();
 
 /* V3 F1 shell controller — display only; does not call render/save/ticks/ensure */
 (function(){
-  var LABELS={hub:"拠点・生活",adv:"冒険・戦闘",party:"人物・育成",world:"世界・社会",log:"記録・管理"};
+  var LABELS={hub:"拠点",adv:"冒険",party:"人物",world:"世界",log:"記録"};
   var current="hub";
   function getS(){
     try{ if(typeof S!=="undefined" && S) return S; }catch(e){}
@@ -5894,7 +5963,7 @@ boot();
     var flags=[];
     if(s.battle) flags.push("戦闘中");
     if(s.away) flags.push("遠征中");
-    if(s.phase) flags.push(String(s.phase));
+    if(s.phase){var phaseText={town:"町",field:"現地",exploration:"探索",battle:"戦闘"};if(!flags.includes(phaseText[s.phase]||s.phase))flags.push(phaseText[s.phase]||s.phase);}
     set("f1HudFlags", flags.length?flags.join(","):"拠点");
   }
   function showPane(id){
