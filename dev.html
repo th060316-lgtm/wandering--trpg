@@ -1234,7 +1234,7 @@ function emptyState(){
     uxJourneyMode:'free',uxJourney:null,uxLastJourney:null,uxFieldJob:null,uxFieldJobHistory:[],uxFieldLastDay:0,uxFieldTalkDay:0,
     uxWarehouse:{herb:0,scrap:0,ore:0,hide:0},uxLastBattleCommands:[],uxLifeEventsInterrupted:0,
     shopStock:null,shopStockLastRefreshDay:0,econUi:"",
-    res:{food:10,water:12,fatigue:0,injury:0,weather:"晴れ"},
+    res:{food:24,water:24,fatigue:0,injury:0,weather:"晴れ"},
     party:startingParty(),en:[],logs:[],
     // V1.5 Social Companion
     orgs:null,rivals:null,orgRelations:{},companionMemories:{},roleHabits:{},
@@ -6513,7 +6513,7 @@ function uxShowLifePanel(){
 function uxLifeConfig(mode){
   return {
     work:{label:'日雇い労働',gold:2,fatigue:5,food:0,water:0,detail:'日給2通貨。雇い主から一行分の食事と水を現物支給し、当日全員が消費する。'},
-    gather:{label:'近郊採集',gold:0,fatigue:8,food:1,water:1,detail:'一行分の食料・水と余剰1単位を回収し、全員分の食・水を消費。上限16、素材は1日につき1つ。'},
+    gather:{label:'近郊採集',gold:0,fatigue:8,food:1,water:1,detail:'一行分の食料・水と余剰1単位を回収し、全員分の食・水を消費。携行上限32、素材は1日につき1つ。'},
     rest:{label:'療養',gold:-1,fatigue:-12,food:-1,water:-1,detail:'毎日宿代1通貨と一行の人数分の食料・水を消費。負傷は3回復、HPも回復。'},
     observe:{label:'地域調査',gold:0,fatigue:2,food:-1,water:-1,detail:'毎日一行の人数分の食料・水を消費。地域知識は1日2点上昇（最大100）。'}
   }[mode]||null;
@@ -6557,10 +6557,13 @@ function uxOneLifeDay(mode){
   const limit=mode==='gather'&&typeof lawCheckForage==='function'?lawCheckForage(S):null;
   if(limit?.needAck&&!document.getElementById('uxForageLawAck')?.checked)return {ok:false,reason:'この地域には採集制限があります。規制と届出を確認してください'};
   // Each accepted day consumes food and water. Work offers in-kind meals; gather collects before use.
-  if(mode==='work'){S.res.food=Math.min(16,S.res.food+dailyNeed);S.res.water=Math.min(16,S.res.water+dailyNeed);}
-  if(mode==='gather'){S.res.food=Math.min(16,S.res.food+dailyNeed+1);S.res.water=Math.min(16,S.res.water+dailyNeed+1);}
-  if(S.res.food<dailyNeed||S.res.water<dailyNeed)return {ok:false,reason:'一行'+dailyNeed+'人分の食料・水を確保できない'};
-  S.res.food-=dailyNeed;S.res.water-=dailyNeed;
+  // Daily work is fed by the employer: meals are consumed without touching packed food/water.
+  if(mode==='gather'){S.res.food+=dailyNeed+1;S.res.water+=dailyNeed+1;}
+  if(mode!=='work'){
+    if(S.res.food<dailyNeed||S.res.water<dailyNeed)return {ok:false,reason:'一行'+dailyNeed+'人分の食料・水を確保できない'};
+    S.res.food-=dailyNeed;S.res.water-=dailyNeed;
+    if(mode==='gather'){S.res.food=Math.min(32,S.res.food);S.res.water=Math.min(32,S.res.water);}
+  }
   S.gold+=c.gold;
   S.res.fatigue=cl(S.res.fatigue+c.fatigue+(limit?.needAck?2:0),0,100);
   if(mode==='rest'){
