@@ -147,6 +147,15 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 #battleLogCard .log{height:200px;white-space:pre-wrap;overflow-wrap:anywhere}
 #partyBattleNote[hidden]{display:none}
 @media(max-width:480px){#battlePartyHost #party{grid-template-columns:minmax(0,1fr)}#battleTurnSummary{font-size:12px}}
+/* PERSONA_P0_20261012: context-aware views, event spotlight and departure notice */
+[hidden]{display:none!important}
+.ux-depart-alert{border:1px solid #88633b;background:#32261d;color:#f1d7a9;padding:11px;border-radius:9px;white-space:pre-wrap;line-height:1.65;margin:9px 0}
+.ux-depart-alert.ok{border-color:#3d6856;background:#192b23;color:#c3e0d3}
+.ux-event-impact{color:#e6c89d;font-size:12px;line-height:1.5;margin:5px 0 11px;white-space:pre-wrap}
+.ux-event-choice{flex:1 1 190px;background:#202522;border:1px solid #3d4a40;border-radius:9px;padding:9px;min-width:0}
+.ux-event-choice button{width:100%;white-space:normal}
+#uxSiteInfo,#uxLocalTalkNote{white-space:pre-wrap;line-height:1.65}
+#uxJourneyReceiptText{white-space:pre-wrap}
 /* UX recovery widgets: narrow screens must not grow to select option text width */
 #uxGatherCard label,#uxLifePanel label{display:block;min-width:0;max-width:100%;overflow-wrap:anywhere}
 #uxGatherCard select,#uxLifePanel select{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
@@ -313,12 +322,17 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       </select></label>
     </div>
     <p class="ux-hint" id="uxJourneyPreview">目的地とルートを選ぶと、出発時の消耗と活動方針が表示されます。</p>
+    <div id="uxBorderInlineBox" class="ux-depart-alert" hidden><label>越境の通行方法 <select id="uxBorderInline" onchange="setBorderChoice(this.value)" style="width:100%;max-width:100%"></select></label><div id="uxBorderHelp" style="margin-top:7px"></div></div>
+    <p id="uxDepartureNotice" class="ux-depart-alert" role="status" aria-live="polite" hidden></p>
     <div class="row"><button onclick="uxOpenAdvancedTravel()">関所・ルートの詳しい設定</button><button type="button" id="uxUnifiedDepart" class="primary" onclick="uxStartJourney()">選んだ目的で出発</button></div>
     <p class="s">到着後はそこを起点に探索・採集・地域調査・現地の小仕事・野営ができます。帰還はいつでも選べます（戦闘中は撤退になります）。</p>
   </div>
   <div class="c ux-lead" id="uxFieldCard" hidden>
     <div class="ux-eyebrow">現地での冒険</div><h2 id="uxFieldTitle">到着地での活動</h2>
     <p id="uxFieldStatus" class="ux-story"></p>
+    <label>今日活動する場所 <select id="uxFieldSite" onchange="uxChooseFieldSite(this.value)" style="width:100%"></select></label>
+    <p id="uxSiteInfo" class="ux-hint">活動を実行すると現地で1日経過します。</p>
+    <div id="uxLocalTalkNote" class="ux-hint" aria-live="polite"></div>
     <div class="ux-choice">
       <button type="button" onclick="uxFieldSurvey()">現地を調査する</button>
       <button type="button" onclick="uxFieldGather()">採集する</button>
@@ -334,7 +348,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <p class="ux-hint" id="uxFieldRumor"></p>
   </div>
   
-  <div class="c">
+  <div class="c" id="uxQuestCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>依頼</h2>
       <div class="row">
@@ -379,7 +393,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <!-- V18_ADVISOR_HTML_END -->
   </details>
 
-  <div class="c">
+  <div class="c" id="uxExploreCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>探索・イベント</h2>
       <div class="row">
@@ -394,7 +408,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <details class="ux-tools"><summary>現地調査の注意</summary><p class="s">現地調査は既に起きた出来事を調べる行動です。新しい戦闘や依頼報酬が必ず発生するものではありません。</p></details>
   </div>
 
-  <div class="c">
+  <div class="c" id="uxCampCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>野営（遠征中）</h2>
       <div class="row">
@@ -421,7 +435,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div id="v4EventActions" class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"></div>
   </div>
 
-  <div class="c">
+  <div class="c" id="uxBattleBoardCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>7区画戦場</h2>
       <span class="s">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
@@ -430,7 +444,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
 
-  <div class="c">
+  <div class="c" id="uxBattleEnemiesCard">
     <h2>敵</h2>
     <div id="enemies" class="g"></div>
   </div>
@@ -780,6 +794,8 @@ function v4IsEligible(def){
   if(el.away === false && S.away) return false;
   if(Array.isArray(el.phases) && !el.phases.includes(S.phase||(S.away?'field':'town'))) return false;
   if(el.minDay!=null && (S.day||1)<el.minDay) return false;
+  // There is no generic night clock. A night-only event is legal only during a completed camp night.
+  if(el.nightOrCamp===true && S.uxNightEventReadyDay!==S.day)return false;
   // This deliberately makes fog a boost, not an exclusive climate gate (Phase1).
   if(Array.isArray(el.regions) && !el.regions.includes(activeRegion(S))) return false;
   const cd=v4.cooldowns[def.eventId];
@@ -850,14 +866,30 @@ function v4RenderActive(){
   for(const ch of a.actions||[]){
     const entry=def?.actions?.find(x=>x.id===ch.id);
     if(!entry)continue;
+    const box=document.createElement('div');box.className='ux-event-choice';
     const btn=document.createElement('button');btn.type='button';btn.textContent=ch.label;
     const missing=v4CostMissing(entry.cost||{});
     if(missing){btn.disabled=true;btn.title=missing;btn.textContent+='（'+missing+'）';}
+    const impact=document.createElement('div');impact.className='ux-event-impact';impact.textContent=uxEventImpact(def,entry);
     btn.onclick=()=>v4ResolveChoice(ch.id);
-    acts.appendChild(btn);
+    box.appendChild(btn);box.appendChild(impact);acts.appendChild(box);
   }
 }
 
+function uxEventImpact(def,entry){
+  const cost=entry.cost||{},effects=entry.effects||{},parts=[];
+  for(const [key,label] of [['gold','通貨'],['food','食料'],['water','水']])if(cost[key])parts.push(label+'-'+cost[key]);
+  const fatigue=(cost.fatigue||0)+(effects.fatigue||0);
+  if(fatigue)parts.push('疲労'+(fatigue>0?'+':'')+fatigue);
+  if(effects.injury)parts.push('負傷+'+effects.injury);
+  if(effects.time)parts.push('時間+'+effects.time+'日');
+  if(effects.intel)parts.push('地域情報を得る');
+  const leave=(def.eventId==='v4_b058_gate_retreat'&&entry.id==='scout_retreat')||
+    (def.eventId==='v4_c201_fog_checkpoint'&&entry.id==='turn_back');
+  if(leave){parts.push('選択すると自動で拠点へ帰還');if(S.uxFieldJob?.status==='active')parts.push('現地仕事は未納品のまま残り、期限を過ぎると失効');}
+  if(!parts.length)parts.push('明示された資源支出なし（未知の影響は保証できません）');
+  return '分かっている影響：'+parts.join('／');
+}
 function v4CostMissing(cost){
   const res=S?.res||{};
   if((cost.gold||0)>(Number(S?.gold)||0))return '通貨不足';
@@ -1984,6 +2016,7 @@ function startLocalExploration(){
   render();
 }
 function resolveExploration(choice){
+  if(S.v4Events?.active)return lg('未対応の事件があります。事件の選択を先に行ってください。');
   if(!S.away||S.phase!=="exploration"||!S.exploration||S.exploration.resolved)
     return lg("今は探索イベントを解決できない。");
   const e=EXPLORE_EVENTS.find(x=>x.id===S.exploration.event)||EXPLORE_EVENTS[0];
@@ -2179,6 +2212,7 @@ function townRest(){
 
 function returnTown(){
   if(!S.away)return lg("出発前は帰還できない。");
+  if(S.v4Events?.active&&!S.battle)return lg('対応を決めていない出来事があります。先に事件への対応を選んでください。');
   const roaming=!!S.uxJourney&&S.uxJourney.mode==='free';
   const completed=!!S.quest?.done;
   const finishedQuest=completed?{...S.quest}:null;
@@ -5235,7 +5269,7 @@ function render(){
   v19RenderPhase0(); // V1.9 Phase0 only
   try{ v4OnRenderHook(); }catch(e){} // V4 Phase1 UI refresh (display only)
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
-  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
+  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -6148,6 +6182,7 @@ boot();
     if(rec.outcome==="success") return "成功（依頼達成）";
     if(rec.outcome==="rescue_retreat") return "救出撤退（未達）";
     if(rec.outcome==="retreat") return "撤退（未達）";
+    if(rec.outcome==="free") return "自由遠征から帰還";
     return rec.outcome||"未達";
   }
   function atTown(){
@@ -6161,7 +6196,7 @@ boot();
     if(!rec){ el.textContent = "まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。"; return; }
     var lines = [];
     lines.push("【帰還結果】"+outcomeLabel(rec));
-    lines.push("依頼: "+(rec.questTitle||"—"));
+    if(rec.outcome!=="free")lines.push("依頼: "+(rec.questTitle||"未選択"));
     lines.push("Day "+rec.before.day+" → "+rec.after.day+"（"+fmtDelta(delta(rec.before,rec.after,"day"))+"日）");
     lines.push("通貨 "+rec.before.gold+" → "+rec.after.gold+"（"+fmtDelta(delta(rec.before,rec.after,"gold"))+"）");
     lines.push("食料 "+rec.before.food+" → "+rec.after.food+"（"+fmtDelta(delta(rec.before,rec.after,"food"))+"）");
@@ -6328,7 +6363,7 @@ boot();
             ||(S.res.fatigue>0)||(S.res.injury>0)||(S.res.food<6)||(S.res.water<6);
           if(!needs) lines.push("現在は休養の必要がありません（既存判定と同じ）。");
           else{ var days=(S.res.injury>20||S.res.fatigue>50)?2:1; lines.push("見込み: "+days+"日 / 宿泊・食費 "+uxRestQuote().cost+"通貨。費用を払って食料・水を補給。");
-            if(gold<=0) lines.push("所持金0: 既存の賄い仕事救済（+2）が適用される場合があります。"); }
+            if(gold<=0) lines.push("所持金が不足するなら、日雇い労働か非戦闘採集仕事で稼いでから宿泊できます。"); }
         }
       }catch(e){ lines.push("状態参照失敗。"); }
       detailEl.textContent=lines.join("\n");
@@ -6401,8 +6436,10 @@ boot();
       var result=orig.apply(this,arguments);
       try{
         var after=snapBasic(S);
-        var outcome="unknown";
-        if(S&&Array.isArray(S.questHistory)&&S.questHistory.length){
+        var outcome="retreat";
+        if(S?.uxLastJourney?.mode==='free'&&S.uxLastJourney.returnDay===S.day){outcome='free';}
+        else if((after?.clearCount||0)>(before?.clearCount||0)){outcome='success';}
+        else if(S&&Array.isArray(S.questHistory)&&S.questHistory.length){
           var last=S.questHistory[S.questHistory.length-1];
           if(last&&last.outcome) outcome=last.outcome;
         }else if(before&&after){ if((after.clearCount||0)>(before.clearCount||0)) outcome="success"; }
@@ -6757,12 +6794,13 @@ function uxStartJourney(forceQuest=false){
   if(!S||S.away||S.battle)return lg('出発操作は拠点でのみ可能です。');
   const mode=forceQuest?'quest':(document.getElementById('uxJourneyMode')?.value||S.uxJourneyMode||'free');
   if(mode==='quest'){
-    if(!S.quest)return lg('先に依頼を選んでください。');
+    if(!S.quest){uxRenderJourney();return lg('先に依頼を選んでください。');}
+    if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
     startQuest();
     if(S.away)uxMaybeEncounter();
     return;
   }
-  if(!uxCheckDepartureBorder())return;
+  if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
   uxOpenJourney('free');
   S.quest=null;S.away=true;S.phase='field';S.exploration=null;S.battle=false;
   applyBorderOnDepart(S);
@@ -6788,6 +6826,7 @@ function uxAdvanceFieldDay(kind){
   nationTick(S,1);
   if(typeof updateRivals==='function')updateRivals(S);
   S.res.fatigue=cl(S.res.fatigue+(kind==='rest'?-14:kind==='gather'?8:5),0,100);
+  S.uxNightEventReadyDay=kind==='rest'?S.day:null;
   uxExpireFieldJob();
   return true;
 }
@@ -6808,6 +6847,24 @@ function uxLocalProgress(type){
   if(!t||t.status!=='active'||t.region!==activeRegion(S)||t.type!==type)return;
   t.progress=Math.min(t.goal,t.progress+1);
 }
+function uxChooseFieldSite(site){
+  if(!S||!S.away||S.battle||S.v4Events?.active)return;
+  const places=regionProfile(activeRegion(S))?.places||[];
+  if(!places.includes(site))return;
+  S.uxFieldSite=site;
+  // Choosing where to perform tomorrow's action is planning; day advances when acting, not when choosing.
+  uxRenderJourney();
+}
+function uxCurrentSite(){
+  const places=regionProfile(activeRegion(S))?.places||[];
+  return places.includes(S?.uxFieldSite)?S.uxFieldSite:(places[0]||activeRegion(S));
+}
+function uxSiteSpecialty(site){
+  if(/森|林|草|葦|牧|苔|湿地|風見|谷/.test(site))return {tag:'草木の採取に向く',mat:'herb'};
+  if(/石|採|荷|滑車|砦|遺構|倒れ|舟/.test(site))return {tag:'資材の回収に向く',mat:'scrap'};
+  if(/井戸|水|浜|川|湖|堤|渡し/.test(site))return {tag:'水辺の情報を集めやすい',mat:'herb'};
+  return {tag:'地形調査と一般採集の両方に向く',mat:'herb'};
+}
 function uxFieldSurvey(){
   if(!uxFieldEligible())return;
   if(!uxAdvanceFieldDay('survey'))return;
@@ -6815,8 +6872,7 @@ function uxFieldSurvey(){
   ri.knowledge=Math.min(100,(ri.knowledge||0)+4);
   ri.discoveryLevel=Math.min(100,(ri.discoveryLevel||0)+3);
   visitRegion(S,{region,careful:true});
-  const names=regionProfile(region)?.places||[];
-  const place=names.length?names[(S.day+Math.floor(ri.knowledge/10))%names.length]:region;
+  const place=uxCurrentSite();
   uxLocalProgress('survey');
   uxAddJourneyNote('Day'+S.day+'：'+place+'付近の地形と道を調査。知識と地図精度が増した。');
   lg('【現地調査】'+place+'周辺を1日調べた。地域知識+4、精度+3（限界100）。食料と水を消費。');
@@ -6833,7 +6889,9 @@ function uxFieldGather(){
   if(restriction?.needAck)S.res.fatigue=cl(S.res.fatigue+2,0,100);
   const region=activeRegion(S),eco=typeof v17EnsureEcology==='function'?v17EnsureEcology(S,region):null;
   const sparse=eco&&eco.veg<20;
-  const key=(S.uxFieldJob?.type==='gather'&&S.uxFieldJob.material==='scrap')?'scrap':'herb';
+  const place=uxCurrentSite();
+  const siteInfo=uxSiteSpecialty(place);
+  const key=(S.uxFieldJob?.status==='active'&&S.uxFieldJob.type==='gather'&&S.uxFieldJob.material)?S.uxFieldJob.material:siteInfo.mat;
   if(!S.materials)S.materials={ore:0,hide:0,herb:0,scrap:0};
   const amount=sparse?0:1;
   S.materials[key]=Math.min(1000000,(S.materials[key]||0)+amount);
@@ -6843,8 +6901,8 @@ function uxFieldGather(){
     if(S.quest.uxGatherProgress>=2){S.quest.done=1;lg('採取依頼の必要量を確保。戦闘なしで帰還・納品できます。');}
   }
   if(amount)uxLocalProgress('gather');
-  uxAddJourneyNote('Day'+S.day+'：'+region+'で'+(amount?'採集成功。':'植生が乏しく収穫なし。'));
-  lg('【現地採集】'+(amount?'素材 '+key+' +1。':'植生不足で収穫なし。')+'1日経過し一行分の食料・水を消耗。');
+  uxAddJourneyNote('Day'+S.day+'：'+place+'で'+(amount?'採集成功。':'資源が乏しく収穫なし。'));
+  lg('【現地採集】'+place+'：'+(amount?'素材 '+key+' +1。':'採れる資源が乏しく収穫なし。')+'1日経過し一行分の食料・水を消耗。');
   uxMaybeEncounter();render();
 }
 function uxFieldRest(){
@@ -6852,19 +6910,42 @@ function uxFieldRest(){
   if(!uxAdvanceFieldDay('rest'))return;
   for(const u of S.party||[])if(u.hp>0)u.hp=Math.min(u.maxHp,u.hp+Math.max(1,Math.round(u.maxHp*.15)));
   S.res.injury=Math.max(0,S.res.injury-3);
-  uxAddJourneyNote('Day'+S.day+'：現地で野営。疲労・負傷を少し回復。');
+  uxAddJourneyNote('Day'+S.day+'：'+uxCurrentSite()+'で野営。疲労・負傷を少し回復。');
   lg('現地で一泊。食料・水を使い、疲労-14、負傷-3、HP一部回復。');
   uxMaybeEncounter();render();
+}
+function uxLocalContact(region){
+  const names={
+    '灰風平原':['荷馬車のイオ','行商人','荷を運ぶため安全な道を求めている。'],
+    '碧森辺境':['薬師のミナ','薬草商','採集が続かなければ商売が成り立たない。'],
+    '赤土丘陵':['案内人のラウ','道案内','悪路と水不足で旅人が遭難するのを恐れている。'],
+    'セラ川下流湿地':['渡し守のセナ','船頭','渡河を続けられる安全な道を探している。'],
+    'ベルク北峠旧軍道':['峠守のオル','元警備兵','封鎖と通行税で仕事を失うのを恐れている。'],
+    '東部採石路':['石工のベン','石工','運搬路が荒れると石材の仕事が途絶える。'],
+    '風車牧野':['牧夫のルカ','牧畜民','家畜を守りながら物資を市場へ届けたい。'],
+    '南湖干潟':['漁師のエナ','漁師','湖の水位と運送の変化を気にしている。'],
+    '街道宿場跡':['宿番のゲル','宿場番','街道に旅人が戻ることを望んでいる。']};
+  const a=names[region]||['土地の住人','旅人','この土地で暮らすための手立てを探している。'];
+  return {name:a[0],role:a[1],motive:a[2]};
 }
 function uxAskLocal(){
   if(!uxFieldEligible())return;
   if(S.uxFieldTalkDay===S.day)return lg('今日は既に地元の人から話を聞きました。翌日また訪ねてください。');
   const region=activeRegion(S),ri=S.regionIntel?.[region]||{},rumors=(S.rumors||[]).filter(r=>r?.regionId===region&&(!r.expiresDay||r.expiresDay>=S.day));
   const info=rumors.length?'この土地では「'+rumors[rumors.length-1].text+'」という話がある。ただし噂にすぎない。':
-    (ri.knownRoutes?.length?'最近は'+ri.knownRoutes.slice(-2).join('、')+'の話をよく聞く。':'遠方の道については、確かな情報がない。');
+    (ri.knownRoutes?.length?'最近は'+ri.knownRoutes.slice(-2).join('、')+'の話をよく聞く。':
+      (()=>{const wr=uxRegionRecord(region);
+        if(wr.safety!=null&&wr.safety<45)return 'この辺は人の行き来に不安がある。知らない道を急ぐのは勧めない。';
+        if(wr.logistics!=null&&wr.logistics<45)return '最近の荷の出入りが細く、物資を手に入れにくい。補給のあてを確かめてから進んでほしい。';
+        return 'この土地の旅人なら、'+uxCurrentSite()+'を通る道の状態を見てから次の行き先を決める。私にも遠方の確かな情報はない。';})());
   S.uxFieldTalkDay=S.day;
-  uxAddJourneyNote('Day'+S.day+'：現地の人から聞いた話を記録。');
-  lg('【地元の住人の話】'+info+' 相手の知識や利害によって情報は偏り得る。');render();
+  const person=uxLocalContact(region),world=uxRegionRecord(region);
+  const claim='【'+person.name+'／'+person.role+'】「'+info+'」'+person.motive;
+  S.uxLastTalk={region,day:S.day,site:uxCurrentSite(),text:claim,source:person.role};
+  S.uxLocalTalkHistory=Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[];
+  S.uxLocalTalkHistory.push(S.uxLastTalk);S.uxLocalTalkHistory=S.uxLocalTalkHistory.slice(-40);
+  uxAddJourneyNote('Day'+S.day+'：'+person.name+'から現地の話を聞いた（'+uxCurrentSite()+'）。');
+  lg('【地元の人に相談】'+claim+'／地域安全度'+(world.safety??'不明')+'。伝聞は事実確認ではありません。');render();
 }
 function uxFieldAcceptJob(){
   if(!uxFieldEligible())return;
@@ -6930,6 +7011,36 @@ function uxRenderJourney(){
     '目的地 '+dest+' ／ '+(S.uxJourneyMode==='quest'?'依頼 '+(q?.title||'未選択'):'依頼なしで自由行動')+
     ' ／ '+(PLAN_DEFS[S.expeditionPlan]?.label||'安全')+' 片道'+days+'日（往復'+days*2+'日）。'+
     '一行'+S.party.length+'人の食料・水が毎日減ります。'+(S.uxJourneyMode==='quest'&&q?'':' 到着後は目的を変更せず活動できます。');
+  // Travel must not require looking for an invisible checkpoint control.
+  const crossing=evaluateBorderCrossing(S,dest,home);
+  const inline=document.getElementById('uxBorderInlineBox'),crossSel=document.getElementById('uxBorderInline');
+  if(inline)inline.hidden=!!S.away||!crossing.crossBorder;
+  if(crossSel&&crossing.crossBorder){
+    crossSel.innerHTML='<option value="">通行方法を選ぶ（未選択）</option>'+
+      '<option value="pay"'+(crossing.status==='blocked'?' disabled':'')+'>正規通行'+(crossing.tariff?'（関税'+crossing.tariff+'通貨）':'')+'</option>'+
+      '<option value="detour">合法迂回（追加日数・疲労）</option>'+
+      '<option value="permit"'+(crossing.status==='blocked'?' disabled':'')+'>有償臨時通行証</option>';
+    crossSel.value=S.borderChoice||'';crossSel.disabled=!!S.away||!!S.battle;
+  }
+  const borderHelp=document.getElementById('uxBorderHelp');
+  if(borderHelp&&crossing.crossBorder)borderHelp.textContent='関所状況：'+crossing.label+'（'+crossing.status+'）。'+
+    (crossing.status==='blocked'?'封鎖中のため合法迂回のみ可能。': '所持金 '+S.gold+'通貨。選択した通行方法によって費用や日数が変わる。');
+  const notice=document.getElementById('uxDepartureNotice');
+  if(notice){
+    let reason='';
+    if(!S.away&&S.uxJourneyMode==='quest'&&!S.quest)reason='依頼を選んでください。';
+    if(!S.away&&crossing.crossBorder){
+      if(!S.borderChoice)reason='この地域へ向かうには上の「越境の通行方法」を選ぶ必要があります。';
+      else if(crossing.status==='blocked'&&S.borderChoice!=='detour')reason='関所封鎖中。合法迂回を選んでください。';
+      else if(S.borderChoice==='pay'&&crossing.needPermit&&!crossing.hasPermit)reason='正規通行には通行証が必要です。別の通行方法を選んでください。';
+      else if(S.borderChoice==='pay'&&S.gold<crossing.tariff)reason='関税が不足しています。必要'+crossing.tariff+'通貨。';
+      else if(S.borderChoice==='permit'&&crossing.hasPermit)reason='すでに通行証を所持しています。正規通行または迂回を選んでください。';
+      else if(S.borderChoice==='permit'&&S.gold<((crossing.alt?.type==='issue_permit')?crossing.alt.tariff:crossing.tariff+8))reason='臨時通行証の費用が不足しています。';
+    }
+    const need=v18TravelCost(S,days*2);
+    if(!S.away&&(S.res.food<need.food||S.res.water<need.water))reason+=(reason?'\n':'')+'往復の推定食料'+need.food+'／水'+need.water+'に対し携行が不足。現地で補給しないと危険です。';
+    notice.hidden=!!S.away||!reason;notice.textContent=reason;notice.classList.toggle('ok',false);
+  }
   const depart=document.getElementById('uxUnifiedDepart');if(depart)depart.disabled=!!S.away||!!S.battle;
   const field=document.getElementById('uxFieldCard');if(field)field.hidden=!S.away;
   const fTitle=document.getElementById('uxFieldTitle'),fStatus=document.getElementById('uxFieldStatus');
@@ -6938,18 +7049,54 @@ function uxRenderJourney(){
     ' 疲労'+S.res.fatigue+' 負傷'+S.res.injury+' ／ '+(S.uxJourney?.mode==='free'?'自由に旅している':S.quest?.done?'依頼達成済み：帰還か滞在を選べる':'依頼中')+
     (S.quest?.type==='採取'&&!S.quest.done?' ／ 採取'+(S.quest.uxGatherProgress||0)+'/2':'')+
     '\nここでの活動は原則1日単位。食料・水・疲労・世界の時間が実際に変化します。';
+  const siteSel=document.getElementById('uxFieldSite');
+  if(siteSel&&S.away){const places=regionProfile(activeRegion(S))?.places||[],site=uxCurrentSite();
+    siteSel.innerHTML=places.map(pl=>'<option value="'+v17EscapeHtml(pl)+'"'+(pl===site?' selected':'')+'>'+v17EscapeHtml(pl)+'</option>').join('');
+    siteSel.disabled=!!S.battle||!!S.v4Events?.active;
+  }
+  const siteText=document.getElementById('uxSiteInfo');
+  if(siteText&&S.away){const site=uxCurrentSite();siteText.textContent='活動場所：'+site+'（'+uxSiteSpecialty(site).tag+'）。ここへの移動は次の1日分の採集・調査に含む。';}
+  const talk=document.getElementById('uxLocalTalkNote');
+  if(talk)talk.textContent=S.away&&S.uxLastTalk?.region===activeRegion(S)?S.uxLastTalk.text:'';
   const job=document.getElementById('uxFieldJobStatus');
   if(job){const t=S.uxFieldJob;job.textContent=t?.status==='active'?'【受注中】'+t.region+'の'+(t.type==='gather'?'素材納品':'地域調査')+' '+t.progress+'/'+t.goal+'。期限Day'+t.dueDay+'／報酬'+t.reward+'通貨。':t?.status==='expired'?'前の仕事は期限切れ。次の日に別の仕事を探せます。':'現在進行中の現地仕事なし。';}
   const rumor=document.getElementById('uxFieldRumor');if(rumor){const r=(S.rumors||[]).filter(x=>x.regionId===activeRegion(S)&&(!x.expiresDay||x.expiresDay>=S.day)).slice(-1)[0];rumor.textContent=r?'当地で聞いた話：'+r.text:'この土地で確かめた新しい噂はまだない。';}
   const rec=document.getElementById('uxJourneyReceipt'),txt=document.getElementById('uxJourneyReceiptText');
   if(rec)rec.hidden=!S.uxLastJourney;
   if(txt&&S.uxLastJourney){const j=S.uxLastJourney,b=j.depart,a=j.arrival;
-    const diff=(key,unit='')=>{const delta=(a[key]||0)-(b[key]||0);return key+'：'+b[key]+'→'+a[key]+' ('+(delta>=0?'+':'')+delta+unit+')';};
-    let world=['safety','logistics','passability'].map(k=>b.local?.[k]!=null&&a.local?.[k]!=null?k+' '+b.local[k]+'→'+a.local[k]:null).filter(Boolean).join('／');
+    const names={gold:'通貨',food:'食料',water:'水',fatigue:'疲労',injury:'負傷'};const diff=(key,unit='')=>{const delta=(a[key]||0)-(b[key]||0);return names[key]+'：'+b[key]+'→'+a[key]+' ('+(delta>=0?'+':'')+delta+unit+')';};
+    let world=['safety','logistics','passability'].map(k=>b.local?.[k]!=null&&a.local?.[k]!=null?({safety:'治安',logistics:'物流',passability:'通行状況'}[k])+' '+b.local[k]+'→'+a.local[k]:null).filter(Boolean).join('／');
     txt.textContent=j.region+'を'+(j.mode==='free'?'自由に旅した':'依頼で訪ねた')+'。Day '+j.departDay+'→'+j.returnDay+'、結果：'+j.outcome+'。\n'+
       [diff('gold','通貨'),diff('food'),diff('water'),diff('fatigue')].join(' ／ ')+
       '\n地域状態（出発・帰還の観測値）：'+(world||'比較不能')+'。他の出来事や時間経過も影響するため、すべてが自身の功績とは限りません。'+
       '\n旅の記録：'+(j.notes?.length?j.notes.join('／'):'特記事項なし');
+  }
+}
+function uxRenderContextUI(){
+  if(!S)return;
+  const adv=document.getElementById('f1Pane_adv'),guide=document.getElementById('uxAdventureGuide');
+  const ev=document.getElementById('v4EventsCard'),battle=document.getElementById('battleCommandCard');
+  const board=document.getElementById('uxBattleBoardCard'),enemies=document.getElementById('uxBattleEnemiesCard');
+  if(guide&&adv&&ev&&ev.previousElementSibling!==guide)guide.after(ev);
+  if(battle&&adv&&S.battle&&battle.previousElementSibling!==ev)ev.after(battle);
+  if(battle&&board&&battle.nextElementSibling!==board)battle.after(board);
+  if(board&&enemies&&board.nextElementSibling!==enemies)board.after(enemies);
+  const hasEvent=!!S.v4Events?.active,war=!!S.battle,away=!!S.away;
+  const set=(id,visible)=>{const x=document.getElementById(id);if(x)x.hidden=!visible;};
+  set('v4EventsCard',!war&&away&&hasEvent);
+  set('uxJourneyCard',!away&&!war);
+  set('uxQuestCard',!away&&!war);
+  set('uxTravelOptions',!away&&!war);
+  set('uxFieldCard',away&&!war&&!hasEvent&&S.phase!=='exploration');
+  set('uxExploreCard',away&&!war&&!hasEvent&&S.phase==='exploration');
+  set('uxCampCard',away&&!war&&!hasEvent&&S.phase!=='exploration');
+  set('uxBattleBoardCard',war);
+  set('uxBattleEnemiesCard',war);
+  set('battleLogCard',war);
+  const old=document.getElementById('f2Receipt');if(old)old.hidden=!!S.uxLastJourney;
+  if(hasEvent&&!war){
+    const current=document.getElementById('uxAdventureStory');
+    if(current)current.textContent='【対応が必要な出来事】'+S.v4Events.active.title+'／Day'+S.day+'／'+activeRegion(S)+'。\n下の選択肢から対応を決めるまでは、現地活動や帰還を進められない。';
   }
 }
 function uxRenderCommodity(){
