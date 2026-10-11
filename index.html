@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>流浪冒険者TRPG V3.0 F1 Candidate (UI Shell)</title>
+<title>流浪冒険者TRPG V3.0 F2 MVP3.0-A Candidate</title>
 <style>
 :root{
   --bg:#0c0c0d;--surface:#141416;--surface2:#1c1c20;--fg:#ecece8;--muted:#8e8e87;
@@ -94,6 +94,15 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   body.f1-shell{padding-bottom:16px}
   #f1Nav{position:sticky;bottom:auto;border-top:none;border-bottom:1px solid var(--border);margin-bottom:8px}
 }
+
+/* ===== V3 F2 MVP3.0-A return/life shell (session UI only; no reward re-exec) ===== */
+#f2LifeCard{border:1px solid var(--border);background:var(--surface2);border-radius:8px;padding:10px;margin:8px 0;min-width:0}
+#f2LifeCard h2{margin:0 0 8px;font-size:1.05rem}
+#f2Receipt,#f2LifeResult,#f2RestPreview{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.5;color:var(--fg)}
+#f2LifeActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#f2LifeActions button{min-height:44px;min-width:0}
+#f2LifeCard .f2-muted{color:var(--muted);font-size:11px}
+#f2LifeCard .f2-warn{color:#c4a070}
 </style>
 </head>
 <body>
@@ -159,6 +168,25 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
   
+
+  <div class="c" id="f2LifeCard">
+    <h2>帰還結果・日常（F2 MVP）</h2>
+    <p class="f2-muted">既存の帰還・休養・店・鍛冶を再実行せず表示します。報酬の再付与はしません。</p>
+    <div id="f2Receipt" class="muted">まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。</div>
+    <div id="f2RestPreview" class="muted" style="margin-top:8px"></div>
+    <div id="f2LifeResult" class="muted" style="margin-top:8px"></div>
+    <div id="f2LifeActions" class="row">
+      <button type="button" id="f2BtnPreviewRest">休養の見込みを見る</button>
+      <button type="button" id="f2BtnDoRest">確認して休養する</button>
+      <button type="button" id="f2BtnShop">ショップを開く</button>
+      <button type="button" id="f2BtnSmith">鍛冶を開く</button>
+      <button type="button" id="f2BtnCraft">クラフトを開く</button>
+      <button type="button" id="f2BtnNextQuest">依頼・冒険へ</button>
+      <button type="button" id="f2BtnStay30">30日生活（既存）</button>
+    </div>
+    <p class="f2-muted" style="margin-top:6px">遠征中・戦闘中は拠点の実行系操作を拒否します。価格はショップ/鍛冶画面の表示に従います。</p>
+  </div>
+
 </section><!-- /f1Pane_hub -->
 <section class="f1-pane" id="f1Pane_adv" data-f1-pane="adv" aria-label="冒険・戦闘">
 <div class="c">
@@ -5017,6 +5045,23 @@ function v19ExportHistory(){
 }
 /* V19_LONGWORLD_END */
 
+function v3PreserveFailedBoot(raw){
+  if(!raw)return true;
+  const main=SAVE_KEY+'.failed';
+  try{
+    if(localStorage.getItem(main)===raw)return true;
+    if(localStorage.getItem(main)===null){
+      localStorage.setItem(main,raw);
+      return localStorage.getItem(main)===raw;
+    }
+    for(let i=1;i<=64;i++){
+      const k=main+'.'+i, existing=localStorage.getItem(k);
+      if(existing===raw)return true;
+      if(existing===null){localStorage.setItem(k,raw);return localStorage.getItem(k)===raw;}
+    }
+  }catch(e){console.error('[failed save collision quarantine]',e);}
+  return false;
+}
 function boot(){
   let has=false,failedCurrent=null;
   try{
@@ -5026,7 +5071,12 @@ function boot(){
   if(has){
     S=emptyState();
     if(!load()){
-      try{if(failedCurrent)localStorage.setItem(SAVE_KEY+".failed",failedCurrent);}catch(e){}
+      if(failedCurrent&&!v3PreserveFailedBoot(failedCurrent)){
+        console.error('[Save preservation blocker] Unable to protect corrupted current; automatic newGame cancelled.');
+        const el=document.getElementById('world');
+        if(el)el.textContent='破損Saveの安全退避に失敗。既存Saveを保護するため新世界の自動保存を中止。';
+        return;
+      }
       newGame();
       if(failedCurrent)lg("読込不能な現行セーブを .failed に退避し、新世界を生成した。");
     }
@@ -5415,6 +5465,373 @@ boot();
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", onReady);
   else onReady();
   window.F1Shell={showPane:showPane,refreshHud:refreshHud,getCurrent:function(){return current;}};
+})();
+
+
+
+/* ===== V3 F2 MVP3.0-A: return receipt + life guides (no double reward) ===== */
+(function(){
+  "use strict";
+  // Session-only UI state. NOT written into Save schema.
+  var F2 = {
+    departSnap: null,   // snapshot at startQuest
+    preReturn: null,    // snapshot immediately before returnTown mutates
+    receipt: null,      // last return receipt for display
+    lastLifeDiff: null,
+    pendingRestPreview: null
+  };
+  window.__F2UI = F2;
+
+  function snapBasic(s){
+    if(!s) return null;
+    var mats = s.materials || {};
+    var party = (s.party||[]).map(function(u){
+      return {id:u.id, name:u.name, hero:!!u.hero, hp:u.hp, maxHp:u.maxHp};
+    });
+    return {
+      day: s.day,
+      gold: s.gold,
+      food: s.res && s.res.food,
+      water: s.res && s.res.water,
+      fatigue: s.res && s.res.fatigue,
+      injury: s.res && s.res.injury,
+      ore: mats.ore||0, hide: mats.hide||0, herb: mats.herb||0, scrap: mats.scrap||0,
+      clearCount: s.clearCount||0,
+      away: !!s.away,
+      battle: !!s.battle,
+      phase: s.phase,
+      questTitle: s.quest && (s.quest.title || s.quest.type) || null,
+      questDone: !!(s.quest && s.quest.done),
+      party: party
+    };
+  }
+
+  function delta(a,b,key){
+    if(a==null || b==null) return null;
+    var x=a[key], y=b[key];
+    if(typeof x==="number" && typeof y==="number") return y-x;
+    return null;
+  }
+
+  function fmtDelta(n){
+    if(n==null || !isFinite(n)) return "—";
+    if(n>0) return "+"+n;
+    return String(n);
+  }
+
+  function outcomeLabel(rec){
+    if(!rec) return "—";
+    if(rec.outcome==="success") return "成功（依頼達成）";
+    if(rec.outcome==="rescue_retreat") return "救出撤退（未達）";
+    if(rec.outcome==="retreat") return "撤退（未達）";
+    return rec.outcome||"未達";
+  }
+
+  function atTown(){
+    try{
+      if(typeof S==="undefined" || !S) return false;
+      return !S.away && !S.battle;
+    }catch(e){ return false; }
+  }
+
+  function renderReceipt(){
+    var el = document.getElementById("f2Receipt");
+    if(!el) return;
+    var rec = F2.receipt;
+    if(!rec){
+      el.textContent = "まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。";
+      return;
+    }
+    var lines = [];
+    lines.push("【帰還結果】"+outcomeLabel(rec));
+    lines.push("依頼: "+(rec.questTitle||"—"));
+    lines.push("Day "+rec.before.day+" → "+rec.after.day+"（"+fmtDelta(delta(rec.before,rec.after,"day"))+"日）");
+    lines.push("通貨 "+rec.before.gold+" → "+rec.after.gold+"（"+fmtDelta(delta(rec.before,rec.after,"gold"))+"）");
+    lines.push("食料 "+rec.before.food+" → "+rec.after.food+"（"+fmtDelta(delta(rec.before,rec.after,"food"))+"）");
+    lines.push("水 "+rec.before.water+" → "+rec.after.water+"（"+fmtDelta(delta(rec.before,rec.after,"water"))+"）");
+    lines.push("疲労 "+rec.before.fatigue+" → "+rec.after.fatigue+"（"+fmtDelta(delta(rec.before,rec.after,"fatigue"))+"）");
+    lines.push("負傷 "+rec.before.injury+" → "+rec.after.injury+"（"+fmtDelta(delta(rec.before,rec.after,"injury"))+"）");
+    lines.push("素材 鉱"+rec.before.ore+"→"+rec.after.ore
+      +" / 皮"+rec.before.hide+"→"+rec.after.hide
+      +" / 草"+rec.before.herb+"→"+rec.after.herb
+      +" / 屑"+rec.before.scrap+"→"+rec.after.scrap);
+    lines.push("累積達成 "+rec.before.clearCount+" → "+rec.after.clearCount);
+    if(rec.after.party && rec.after.party.length){
+      lines.push("仲間HP:");
+      rec.after.party.forEach(function(p){
+        lines.push("  "+p.name+": "+p.hp+"/"+p.maxHp+(p.hero?"（主人公）":""));
+      });
+    }
+    if(rec.depart){
+      lines.push("— 出発時スナップとの参考差（遠征全体）—");
+      lines.push("Day "+rec.depart.day+"→"+rec.after.day+" / 通貨 "+rec.depart.gold+"→"+rec.after.gold);
+    }else{
+      lines.push("（出発時スナップなし：帰還直前→直後の差のみ表示。遠征全体の損失とは限りません）");
+    }
+    lines.push("※この表示は記録の再読取です。報酬や世界更新は再実行していません。");
+    el.textContent = lines.join("\n");
+  }
+
+  function renderLifeDiff(){
+    var el = document.getElementById("f2LifeResult");
+    if(!el) return;
+    if(!F2.lastLifeDiff){
+      el.textContent = "";
+      return;
+    }
+    var d = F2.lastLifeDiff;
+    var lines = ["【"+d.action+" 実行結果】"];
+    if(d.cancelled){
+      lines.push(d.reason || "キャンセルまたは条件未達のため実行していません。");
+      el.textContent = lines.join("\n");
+      return;
+    }
+    var b=d.before, a=d.after;
+    lines.push("Day "+b.day+" → "+a.day+"（"+fmtDelta(delta(b,a,"day"))+"）");
+    lines.push("通貨 "+b.gold+" → "+a.gold+"（"+fmtDelta(delta(b,a,"gold"))+"）");
+    lines.push("食料 "+b.food+" → "+a.food+" / 水 "+b.water+" → "+a.water);
+    lines.push("疲労 "+b.fatigue+" → "+a.fatigue+" / 負傷 "+b.injury+" → "+a.injury);
+    el.textContent = lines.join("\n");
+  }
+
+  function previewRest(){
+    var box = document.getElementById("f2RestPreview");
+    if(!box) return;
+    if(!atTown()){
+      F2.pendingRestPreview = null;
+      box.textContent = "遠征中または戦闘中は休養できません。";
+      return;
+    }
+    try{
+      if(typeof S==="undefined" || !S){ box.textContent="状態がありません。"; return; }
+      var needs = (S.party||[]).some(function(a){return a.hp<a.maxHp;})
+        || (S.res.fatigue>0) || (S.res.injury>0) || (S.res.food<6) || (S.res.water<6);
+      if(!needs){
+        F2.pendingRestPreview = {needed:false};
+        box.textContent = "特に休養の必要はありません（既存townRestと同じ判定）。";
+        return;
+      }
+      var days = (S.res.injury>20 || S.res.fatigue>50) ? 2 : 1;
+      var foodCost = Math.min(S.res.food, 2+days);
+      var waterCost = Math.min(S.res.water, 2+days);
+      // townRest does NOT charge lodging gold; do not invent a fee.
+      var lines = [];
+      lines.push("【休養見込み（既存townRestの条件に基づく表示）】");
+      lines.push("予定日数: "+days+"日（宿代の追加徴収なし）");
+      lines.push("消費見込み: 食料-"+foodCost+" / 水-"+waterCost);
+      lines.push("その後、拠点で食料・水が補充され、疲労・負傷・HPが回復します。");
+      if((S.gold||0)<=0){
+        lines.push("所持金0以下: 既存の賄い仕事救済（+2通貨）が適用される場合があります。");
+      }
+      lines.push("確定するには「確認して休養する」を押してください。");
+      F2.pendingRestPreview = {needed:true, days:days, foodCost:foodCost, waterCost:waterCost};
+      box.textContent = lines.join("\n");
+    }catch(e){
+      box.textContent = "見込み表示に失敗: "+e;
+    }
+  }
+
+  function doRestConfirmed(){
+    if(!atTown()){
+      F2.lastLifeDiff = {action:"休養", cancelled:true, reason:"遠征中または戦闘中のため実行しません。"};
+      renderLifeDiff();
+      return;
+    }
+    if(typeof townRest !== "function"){
+      F2.lastLifeDiff = {action:"休養", cancelled:true, reason:"townRest がありません。"};
+      renderLifeDiff();
+      return;
+    }
+    // Optional confirm using existing preview
+    previewRest();
+    var prev = F2.pendingRestPreview;
+    if(prev && prev.needed===false){
+      F2.lastLifeDiff = {action:"休養", cancelled:true, reason:"休養の必要がないため実行しません。"};
+      renderLifeDiff();
+      return;
+    }
+    var msg = "既存の休養処理を1回だけ実行します。よろしいですか？";
+    if(prev && prev.needed){
+      msg = "休養 "+prev.days+"日（食料-"+prev.foodCost+"/水-"+prev.waterCost+"見込み）を実行しますか？\n宿代の追加徴収はありません。";
+    }
+    if(typeof confirm==="function" && !confirm(msg)){
+      F2.lastLifeDiff = {action:"休養", cancelled:true, reason:"ユーザーがキャンセルしました。"};
+      renderLifeDiff();
+      return;
+    }
+    var before = snapBasic(S);
+    try{
+      townRest(); // exactly once
+    }catch(e){
+      F2.lastLifeDiff = {action:"休養", cancelled:true, reason:"例外: "+e};
+      renderLifeDiff();
+      return;
+    }
+    var after = snapBasic(S);
+    F2.lastLifeDiff = {action:"休養", cancelled:false, before:before, after:after};
+    renderLifeDiff();
+    if(window.F1Shell && F1Shell.refreshHud) F1Shell.refreshHud();
+  }
+
+  function guardTownAction(label, fn){
+    if(!atTown()){
+      F2.lastLifeDiff = {action:label, cancelled:true, reason:"遠征中または戦闘中のため拠点操作を拒否しました。"};
+      renderLifeDiff();
+      return;
+    }
+    try{ fn(); }
+    catch(e){
+      F2.lastLifeDiff = {action:label, cancelled:true, reason:"例外: "+e};
+      renderLifeDiff();
+    }
+  }
+
+  function wrapReturnTown(){
+    if(typeof returnTown !== "function") return;
+    if(returnTown.__f2Wrapped) return;
+    var orig = returnTown;
+    function wrapped(){
+      var before = null;
+      try{ before = snapBasic(S); }catch(e){}
+      if(!before || !before.away) return orig.apply(this, arguments);
+      F2.preReturn = before;
+      var result = orig.apply(this, arguments);
+      try{
+        var after = snapBasic(S);
+        // Infer outcome from flags at call time was already used inside orig;
+        // re-read questHistory last entry if present.
+        var outcome = "unknown";
+        if(S && Array.isArray(S.questHistory) && S.questHistory.length){
+          var last = S.questHistory[S.questHistory.length-1];
+          if(last && last.outcome) outcome = last.outcome;
+        }else if(before && after){
+          if((after.clearCount||0) > (before.clearCount||0)) outcome = "success";
+        }
+        // If returnTown early-returned (still away), don't invent a receipt
+        if(S && S.away){
+          return result;
+        }
+        F2.receipt = {
+          outcome: outcome,
+          questTitle: before && before.questTitle,
+          before: before,
+          after: after,
+          depart: F2.departSnap,
+          at: Date.now()
+        };
+        F2.departSnap = null; // consumed
+        renderReceipt();
+        if(window.F1Shell && F1Shell.showPane){
+          try{ F1Shell.showPane("hub"); }catch(e){}
+        }
+        if(window.F1Shell && F1Shell.refreshHud) F1Shell.refreshHud();
+      }catch(e){}
+      return result;
+    }
+    wrapped.__f2Wrapped = true;
+    returnTown = wrapped;
+    try{ window.returnTown = wrapped; }catch(e){}
+  }
+
+  function wrapStartQuest(){
+    if(typeof startQuest !== "function") return;
+    if(startQuest.__f2Wrapped) return;
+    var orig = startQuest;
+    function wrapped(){
+      var wasAway = false, before = null;
+      try{ wasAway = !!S.away; if(!wasAway) before = snapBasic(S); }catch(e){}
+      var result = orig.apply(this, arguments);
+      try{ F2.departSnap = !wasAway && S.away ? before : null; }catch(e){ F2.departSnap = null; }
+      return result;
+    }
+    wrapped.__f2Wrapped = true;
+    startQuest = wrapped;
+    try{ window.startQuest = wrapped; }catch(e){}
+  }
+
+  function wrapNewGameAndLoad(){
+    function clearF2(){
+      F2.departSnap = null;
+      F2.preReturn = null;
+      F2.receipt = null;
+      F2.lastLifeDiff = null;
+      F2.pendingRestPreview = null;
+      renderReceipt();
+      renderLifeDiff();
+      var p = document.getElementById("f2RestPreview");
+      if(p) p.textContent = "";
+    }
+    if(typeof newGame === "function" && !newGame.__f2Wrapped){
+      var on = newGame;
+      function ng(){ var r=on.apply(this,arguments); clearF2(); return r; }
+      ng.__f2Wrapped = true; newGame = ng;
+      try{ window.newGame = ng; }catch(e){}
+    }
+    if(typeof useSaveCandidate === "function" && !useSaveCandidate.__f2Wrapped){
+      var originalCandidate = useSaveCandidate;
+      function chosenCandidate(){
+        var applied = originalCandidate.apply(this, arguments);
+        if(applied===true) clearF2();
+        return applied;
+      }
+      chosenCandidate.__f2Wrapped = true;
+      useSaveCandidate = chosenCandidate;
+      try{ window.useSaveCandidate = chosenCandidate; }catch(e){}
+    }
+  }
+
+  function bindButtons(){
+    var byId = function(id){ return document.getElementById(id); };
+    var b;
+    b=byId("f2BtnPreviewRest"); if(b) b.addEventListener("click", function(){ previewRest(); });
+    b=byId("f2BtnDoRest"); if(b) b.addEventListener("click", function(){ doRestConfirmed(); });
+    b=byId("f2BtnShop"); if(b) b.addEventListener("click", function(){
+      guardTownAction("ショップ", function(){ if(typeof openShop==="function") openShop(); });
+    });
+    b=byId("f2BtnSmith"); if(b) b.addEventListener("click", function(){
+      guardTownAction("鍛冶", function(){ if(typeof openSmith==="function") openSmith(); });
+    });
+    b=byId("f2BtnCraft"); if(b) b.addEventListener("click", function(){
+      guardTownAction("クラフト", function(){ if(typeof openCraft==="function") openCraft(); });
+    });
+    b=byId("f2BtnNextQuest"); if(b) b.addEventListener("click", function(){
+      if(window.F1Shell && F1Shell.showPane) F1Shell.showPane("adv");
+    });
+    b=byId("f2BtnStay30"); if(b) b.addEventListener("click", function(){
+      if(!atTown()){
+        F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"遠征中または戦闘中のため実行しません。"};
+        renderLifeDiff(); return;
+      }
+      if(typeof v19StayDays!=="function"){
+        F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"v19StayDaysがありません。"};
+        renderLifeDiff(); return;
+      }
+      var before=snapBasic(S);
+      try{ v19StayDays(30); }catch(e){
+        F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"例外: "+e};
+        renderLifeDiff(); return;
+      }
+      var after=snapBasic(S);
+      // If day unchanged, treat as not executed (insufficient gold etc.)
+      if(before && after && before.day===after.day && before.gold===after.gold){
+        F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"条件未達のため状態は変化していません（既存ガード）。"};
+      }else{
+        F2.lastLifeDiff={action:"30日生活",cancelled:false,before:before,after:after};
+      }
+      renderLifeDiff();
+      if(window.F1Shell && F1Shell.refreshHud) F1Shell.refreshHud();
+    });
+  }
+
+  function bootF2(){
+    wrapReturnTown();
+    wrapStartQuest();
+    wrapNewGameAndLoad();
+    bindButtons();
+    renderReceipt();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", bootF2);
+  else bootF2();
 })();
 
 </script>
