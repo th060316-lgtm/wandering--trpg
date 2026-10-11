@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>流浪冒険者TRPG V2.0 Stable</title>
+<title>流浪冒険者TRPG V3.0 Stable</title>
 <style>
 :root{
   --bg:#0c0c0d;--surface:#141416;--surface2:#1c1c20;--fg:#ecece8;--muted:#8e8e87;
@@ -68,14 +68,97 @@ button:not(:disabled):active{transform:scale(.98)}
 #v18AdvisorPanel .v18Row>span{display:block}
 #v18AdvisorPanel .v18Options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
 /* V18_ADVISOR_CSS_END */
+
+/* ===== V3 F1 UI Shell: CSS scene switch only (no render/save/tick on nav) ===== */
+:root{--f1-nav-h:56px}
+body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
+#f1Hud{position:sticky;top:0;z-index:40;background:#121214;border-bottom:1px solid var(--border);
+  padding:8px 10px;font-size:12px;line-height:1.45;min-width:0;overflow-wrap:anywhere}
+#f1Hud .f1hud-row{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+#f1Hud .f1hud-item{color:var(--muted)}
+#f1Hud .f1hud-item b{color:var(--fg);font-weight:600}
+#f1Nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;background:#0e0e10;
+  border-top:1px solid var(--border);min-height:var(--f1-nav-h);padding:0;margin:0}
+#f1Nav button{flex:1 1 0;min-height:48px;min-width:0;border:0;border-radius:0;background:transparent;
+  color:var(--muted);font-size:11px;line-height:1.2;padding:8px 2px;cursor:pointer}
+#f1Nav button.f1-active{color:var(--accent-fg);background:var(--accent);font-weight:700}
+#f1Nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.f1-pane{display:none !important}
+.f1-pane.f1-show{display:block !important}
+#f1HeaderCard{margin-bottom:8px}
+@media(max-width:360px){
+  #f1Nav button{font-size:10px;padding:6px 1px}
+  #f1Hud{font-size:11px}
+}
+@media(min-width:900px){
+  body.f1-shell{padding-bottom:16px}
+  #f1Nav{position:sticky;bottom:auto;border-top:none;border-bottom:1px solid var(--border);margin-bottom:8px}
+}
+
+/* ===== V3 F2 MVP3.0-A return/life shell (session UI only; no reward re-exec) ===== */
+#f2LifeCard{border:1px solid var(--border);background:var(--surface2);border-radius:8px;padding:10px;margin:8px 0;min-width:0}
+#f2LifeCard h2{margin:0 0 8px;font-size:1.05rem}
+#f2Receipt,#f2LifeResult,#f2RestPreview,#f2GuideDetail{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.5;color:var(--fg)}
+#f2LifeActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#f2LifeActions button{min-height:44px;min-width:0}
+#f2LifeCard .f2-muted{color:var(--muted);font-size:11px}
+#f2LifeCard .f2-warn{color:#c4a070}
+#f2PriorityTabs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px}
+#f2PriorityTabs button{flex:1 1 90px;min-height:40px;padding:6px 8px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer;font-size:12px}
+#f2PriorityTabs button.f2-tab-active{background:var(--accent,#3a5a40);color:#fff;border-color:var(--accent,#3a5a40)}
+#f2GuidePanel{border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:4px;background:var(--surface);min-width:0}
+#f2GuidePanel .f2-guide-title{font-weight:600;margin-bottom:4px;font-size:13px}
+#f2GuidePanel .f2-guide-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#f2GuidePanel .f2-guide-actions button{min-height:40px}
+#f2CompareBar{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted);margin:4px 0 2px}
+#f2CompareBar span{white-space:nowrap}
+@media (max-width:320px){
+  #f2PriorityTabs button{flex:1 1 100%;font-size:11px}
+  #f2LifeActions button,#f2GuidePanel .f2-guide-actions button{min-width:0;flex:1 1 40%}
+}
+/* HQ V3 P2 UX: battle commands and immediate action feedback on adventure page */
+#battleCommandCard{border-color:var(--ally);scroll-margin-top:80px}
+#battleCommandCard[hidden]{display:none}
+#battlePartyHost #party{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+#battlePartyHost .c{border:0;background:transparent;padding:0;margin:0}
+#battlePartyHost .u{border:1px solid var(--border);min-width:0}
+#battleCommandCard .battle-action-note{font-size:12px;color:var(--muted);margin:5px 0 10px}
+#battleTurnSummary{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;margin-top:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:13px;line-height:1.65;scroll-margin-top:80px}
+#battleTurnSummary.battle-turn-new{border-color:var(--ally)}
+#battleTurnSummary[hidden]{display:none}
+#battleLogCard .log{height:200px;white-space:pre-wrap;overflow-wrap:anywhere}
+#partyBattleNote[hidden]{display:none}
+@media(max-width:480px){#battlePartyHost #party{grid-template-columns:minmax(0,1fr)}#battleTurnSummary{font-size:12px}}
 </style>
 </head>
 <body>
-<main>
+<main class="f1-main">
+<div id="f1Hud" role="status" aria-live="polite">
+  <div class="f1hud-row">
+    <span class="f1hud-item">場面 <b id="f1HudScene">—</b></span>
+    <span class="f1hud-item">地点 <b id="f1HudPlace">—</b></span>
+    <span class="f1hud-item">Day <b id="f1HudDay">—</b></span>
+    <span class="f1hud-item">通貨 <b id="f1HudGold">—</b></span>
+    <span class="f1hud-item">食料 <b id="f1HudFood">—</b></span>
+    <span class="f1hud-item">水 <b id="f1HudWater">—</b></span>
+    <span class="f1hud-item">疲労 <b id="f1HudFatigue">—</b></span>
+    <span class="f1hud-item">負傷 <b id="f1HudInjury">—</b></span>
+    <span class="f1hud-item">状態 <b id="f1HudFlags">—</b></span>
+  </div>
+</div>
+<nav id="f1Nav" aria-label="主画面">
+  <button type="button" data-f1-go="hub" class="f1-active">拠点</button>
+  <button type="button" data-f1-go="adv">冒険</button>
+  <button type="button" data-f1-go="party">人物</button>
+  <button type="button" data-f1-go="world">世界</button>
+  <button type="button" data-f1-go="log">記録</button>
+</nav>
+<div id="f1HeaderCard">
+
   <div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
-        <div class="s">WANDERING TRPG V2.0 STABLE · DAILY LIFE NEXT</div>
+        <div class="s">WANDERING TRPG V3.0 STABLE · OFFLINE</div>
         <h1>流浪冒険者TRPG</h1>
         <div id="world" class="muted"></div>
       </div>
@@ -89,13 +172,57 @@ button:not(:disabled):active{transform:scale(.98)}
   </div>
 
 
-  <div class="c">
+  </div>
+<section class="f1-pane" id="f1Pane_hub" data-f1-pane="hub" aria-label="拠点・生活">
+<div class="c">
     <h2>サバイバル</h2>
     <div id="surv" class="row"></div>
   </div>
 
 
   <div class="c">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2>町の経済・職人</h2>
+      <div class="row">
+        <button type="button" id="btnShop" onclick="openShop()">ショップ</button>
+        <button type="button" id="btnSmith" onclick="openSmith()">鍛冶屋（本修理）</button>
+        <button type="button" id="btnCraft" onclick="openCraft()">軽量クラフト</button>
+      </div>
+    </div>
+    <div id="econStatus" class="muted" style="white-space:pre-wrap">拠点で利用できる。通貨・在庫・修理は世界供給と連動。</div>
+    <div id="econPanel" class="g" style="margin-top:8px"></div>
+  </div>
+
+  
+
+  <div class="c" id="f2LifeCard">
+    <h2>帰還結果・日常（F2 MVP）</h2>
+    <p class="f2-muted">既存の帰還・休養・店・鍛冶を再実行せず表示します。報酬の再付与はしません。3導線で操作先を比較・選択できます。</p>
+    <div id="f2Receipt" class="muted">まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。</div>
+    <div id="f2CompareBar" aria-live="polite"></div>
+    <div id="f2PriorityTabs" role="tablist" aria-label="生活優先導線">
+      <button type="button" id="f2TabRest" data-f2-tab="rest" role="tab" aria-selected="true" class="f2-tab-active">休養優先</button>
+      <button type="button" id="f2TabEquip" data-f2-tab="equip" role="tab" aria-selected="false">装備整備優先</button>
+      <button type="button" id="f2TabSupply" data-f2-tab="supply" role="tab" aria-selected="false">補給優先</button>
+    </div>
+    <div id="f2GuidePanel">
+      <div class="f2-guide-title" id="f2GuideTitle">休養優先</div>
+      <div id="f2GuideDetail" class="muted">タブを選ぶと、現状と見込み・実行先が表示されます。</div>
+      <div class="f2-guide-actions" id="f2GuideActions"></div>
+    </div>
+    <div id="f2RestPreview" class="muted" style="margin-top:8px"></div>
+    <div id="f2LifeResult" class="muted" style="margin-top:8px"></div>
+    <div id="f2LifeActions" class="row">
+      <button type="button" id="f2BtnNextQuest">依頼・冒険へ</button>
+      <button type="button" id="f2BtnStay30">30日生活（既存・12通貨）</button>
+      <button type="button" id="f2BtnCraft">クラフトを開く</button>
+    </div>
+    <p class="f2-muted" style="margin-top:6px">遠征中・戦闘中は拠点の実行系操作を拒否します。修理価格は鍛冶画面で確認。ショップ価格・在庫は既存画面の表示に従い、F2では生成・更新しません。売却・倉庫は未決・次段送り。</p>
+  </div>
+
+</section><!-- /f1Pane_hub -->
+<section class="f1-pane" id="f1Pane_adv" data-f1-pane="adv" aria-label="冒険・戦闘">
+<div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>依頼</h2>
       <div class="row">
@@ -147,6 +274,10 @@ button:not(:disabled):active{transform:scale(.98)}
       </div>
     </div>
     <div id="explore" class="muted">拠点待機中</div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" id="btnLocalExplore" onclick="startLocalExploration()" disabled>依頼達成後、現地を調査する（1回）</button>
+    </div>
+    <div class="s">現地調査は既存の地域イベントを再利用します。追加戦闘・依頼報酬は発生しません。</div>
   </div>
 
   <div class="c">
@@ -164,24 +295,36 @@ button:not(:disabled):active{transform:scale(.98)}
   </div>
 
   <div class="c">
-    <h2>情報・地図・地域知識</h2>
-    <div id="infoPanel" class="muted" style="white-space:pre-wrap"></div>
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2>7区画戦場</h2>
+      <span class="s">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
+    </div>
+    <div id="board" class="lanes"></div>
   </div>
+
 
   <div class="c">
-    <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>町の経済・職人</h2>
-      <div class="row">
-        <button type="button" id="btnShop" onclick="openShop()">ショップ</button>
-        <button type="button" id="btnSmith" onclick="openSmith()">鍛冶屋（本修理）</button>
-        <button type="button" id="btnCraft" onclick="openCraft()">軽量クラフト</button>
-      </div>
-    </div>
-    <div id="econStatus" class="muted" style="white-space:pre-wrap">拠点で利用できる。通貨・在庫・修理は世界供給と連動。</div>
-    <div id="econPanel" class="g" style="margin-top:8px"></div>
+    <h2>敵</h2>
+    <div id="enemies" class="g"></div>
   </div>
+  <section class="c" id="battleCommandCard" aria-label="戦闘中の味方行動コマンド" hidden>
+    <h2>味方の行動選択 → 実行</h2>
+    <p class="battle-action-note">ここで味方全員の行動・対象を選択し、下のボタンで1ターン確定します。自律の仲間は自動で行動します。</p>
+    <div id="battlePartyHost"></div>
+    <button type="button" class="primary" id="resolve" style="width:100%;margin-top:10px" onclick="resolveTurn()">選択した行動で1ターン実行</button>
+  </section>
+  <section class="c" id="battleTurnSummary" role="status" aria-live="polite" hidden></section>
+  <section class="c" id="battleLogCard" aria-label="冒険と戦闘のログ">
+    <h2>行動ログ（最新が下）</h2>
+    <div class="s">選んだコマンドの結果・命中・ダメージ・勝敗などを時系列で確認できます。全履歴は「記録」画面でも見られます。</div>
+    <div id="battleLog" class="log" role="log" aria-live="off" style="margin-top:8px"></div>
+  </section>
 
-  <div class="c" id="socialBox">
+
+  
+</section><!-- /f1Pane_adv -->
+<section class="f1-pane" id="f1Pane_party" data-f1-pane="party" aria-label="人物・育成">
+<div class="c" id="socialBox">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>仲間・組織・社会 (V1.5)</h2>
       <div class="row">
@@ -194,44 +337,13 @@ button:not(:disabled):active{transform:scale(.98)}
     <div id="socialPanel" class="g" style="margin-top:8px"></div>
   </div>
 
-  <div class="c" id="nationBox">
-    <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>国家・国境・インフラ (V1.6 Prototype)</h2>
-      <div class="row">
-        <button type="button" id="btnNation" onclick="openNationUi('nation')">国家Lite</button>
-        <button type="button" id="btnBorder" onclick="openNationUi('border')">関所・国境</button>
-        <button type="button" id="btnInfra" onclick="openNationUi('infra')">インフラ・物流</button>
-        <button type="button" id="btnDisaster" onclick="openNationUi('disaster')">災害・戦争Lite</button>
-        <button type="button" id="btnChronicle" onclick="openNationUi('chronicle')">年代記</button>
-        <button type="button" id="btnCredit" onclick="openNationUi('credit')">信用・契約</button>
-      </div>
-    </div>
-    <div id="nationStatus" class="muted" style="white-space:pre-wrap">仮配置の国家圧縮値・関所・インフラ。正式な国名・国境線ではない。</div>
-    <div id="nationPanel" class="g" style="margin-top:8px"></div>
-  </div>
-
-  <div class="c">
-    <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>7区画戦場</h2>
-      <span class="s">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
-    </div>
-    <div id="board" class="lanes"></div>
-  </div>
-
-
-  <div class="c">
-    <h2>パーティー（最大6）</h2>
-    <div id="party" class="g"></div>
-  </div>
-
-
-  <div class="c">
-    <h2>敵</h2>
-    <div id="enemies" class="g"></div>
-    <div style="margin-top:10px">
-      <button type="button" class="primary" id="resolve" style="width:100%" onclick="resolveTurn()">全行動確定→1ターン解決</button>
+  <div id="partyHome">
+    <div class="c" id="partyCard">
+      <h2>パーティー（最大6）</h2>
+      <div id="party" class="g"></div>
     </div>
   </div>
+  <p id="partyBattleNote" class="muted" hidden>戦闘中のパーティーと行動コマンドは「冒険」画面に表示しています。育成・社会情報はこの画面で確認できます。</p>
 
 
   <div class="c">
@@ -254,11 +366,29 @@ button:not(:disabled):active{transform:scale(.98)}
   </details>
   <!-- V19_PHASE0_UI_END -->
 
-  <div class="c">
-    <h2>ログ</h2>
-    <div id="log" class="log"></div>
+  
+</section><!-- /f1Pane_party -->
+<section class="f1-pane" id="f1Pane_world" data-f1-pane="world" aria-label="世界・社会">
+<div class="c">
+    <h2>情報・地図・地域知識</h2>
+    <div id="infoPanel" class="muted" style="white-space:pre-wrap"></div>
   </div>
 
+  <div class="c" id="nationBox">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2>国家・国境・インフラ (V1.6 Prototype)</h2>
+      <div class="row">
+        <button type="button" id="btnNation" onclick="openNationUi('nation')">国家Lite</button>
+        <button type="button" id="btnBorder" onclick="openNationUi('border')">関所・国境</button>
+        <button type="button" id="btnInfra" onclick="openNationUi('infra')">インフラ・物流</button>
+        <button type="button" id="btnDisaster" onclick="openNationUi('disaster')">災害・戦争Lite</button>
+        <button type="button" id="btnChronicle" onclick="openNationUi('chronicle')">年代記</button>
+        <button type="button" id="btnCredit" onclick="openNationUi('credit')">信用・契約</button>
+      </div>
+    </div>
+    <div id="nationStatus" class="muted" style="white-space:pre-wrap">仮配置の国家圧縮値・関所・インフラ。正式な国名・国境線ではない。</div>
+    <div id="nationPanel" class="g" style="margin-top:8px"></div>
+  </div>
 
   <details class="c" id="simPanel">
     <summary>V1.4 世界シミュレーション・経済確認（開発用）</summary>
@@ -270,11 +400,22 @@ button:not(:disabled):active{transform:scale(.98)}
     <h2>因果履歴（最新80件表示・全履歴はSaveへ保存）</h2><div id="simHistory" class="log"></div>
   </details>
   <p class="s">Prototype／V1.0の9地域・15装備を継承／V1.5 Social Companion（仲間・組織・社会）</p>
+
+</section><!-- /f1Pane_world -->
+<section class="f1-pane" id="f1Pane_log" data-f1-pane="log" aria-label="記録・管理">
+<div class="c">
+    <h2>ログ</h2>
+    <div id="log" class="log"></div>
+  </div>
+
+
+  
+</section><!-- /f1Pane_log -->
 </main>
 
 
 <script>
-const SAVE_KEY="wander_trpg_v200_stable_html"; // V2.0 keeps its saves separate; previous versions are read-only migration inputs
+const SAVE_KEY="wander_trpg_v300_stable_html"; // V3.0 Stable uses independent storage; older saves are read-only migration inputs
 const SAVE_VERSION=11; // V1.7 candidate: v9→v10 adds v17* world-memory fields; old keys preserved for migration
 const V17_LIMITS={maxEvents:200,maxKnown:120,maxContracts:40,maxArchiveExport:80,maxRumorTransit:80,maxFestivals:12};
 const LANES=[
@@ -1029,6 +1170,11 @@ function syncTargets(){
 }
 function resolveTurn(){
   if(!S.battle)return;
+  // Session-only UI receipt: never store in S or persist to Save.
+  const turnCommands=S.party.filter(u=>u.hp>0).map(u=>
+    u.name+"："+(u.hero||u.mode==="指示"?(ACTIONS[u.act]||u.act):"自律（"+(ACTIONS[u.act]||u.act)+"）")+
+    (u.act==="attack"?" → "+(S.en.find(e=>e.id===u.targetId)?.name||"敵を自動選択"):""));
+  const beforeLogTail=S.logs[S.logs.length-1]||null;
   S.heroRescuePending=false;
   syncTargets();
   const units=[...living(S.party),...living(S.en)];
@@ -1148,6 +1294,18 @@ function resolveTurn(){
   }
   syncTargets();
   render();
+  const report=document.getElementById("battleTurnSummary");
+  if(report){
+    const from=beforeLogTail===null?0:S.logs.lastIndexOf(beforeLogTail)+1;
+    const recent=S.logs.slice(from>=0?from:0);
+    const summary=recent.slice(-10).map(x=>x.replace(/^\[Day [^\]]+\] /, ""));
+    report.hidden=false;
+    report.textContent="【確定した行動】\n"+turnCommands.join(" / ")+
+      "\n【今回の結果】\n"+(summary.length?summary.join("\n"):"変化なし（詳細ログを確認）")+
+      "\n【戦闘】"+(S.battle?"継続中":S.quest&&S.quest.done?"勝利・依頼達成":"終了／撤退を確認");
+    report.classList.add("battle-turn-new");
+    report.scrollIntoView({block:"nearest"});
+  }
 }
 
 
@@ -1204,7 +1362,25 @@ function newGame(){
 }
 function confirmNewGame(){
   if(typeof confirm==="function"&&!confirm("現在の進行と保存世界を破棄して新世界を生成しますか？"))return;
-  try{const prev=localStorage.getItem(SAVE_KEY);if(prev)localStorage.setItem(SAVE_KEY+".bak",prev);}catch(e){}
+  // V3 release QA fix: a corrupt current Save must never replace a healthy .bak.
+  // A failed quarantine (including full .failed slots or storage write error)
+  // blocks destructive New World until the player can protect the raw original.
+  let prev=null;
+  try{prev=localStorage.getItem(SAVE_KEY);}
+  catch(e){lg("現行Saveを確認できないため新世界生成を中止した。");return;}
+  if(prev){
+    let valid=false;
+    try{migrateSave(JSON.parse(prev));valid=true;}catch(e){}
+    if(valid){
+      try{localStorage.setItem(SAVE_KEY+".bak",prev);}
+      catch(e){lg("正常Saveのバックアップに失敗したため新世界生成を中止した。");return;}
+    }else{
+      if(!v3PreserveFailedBoot(prev)){
+        lg("破損Saveを安全退避できないため新世界生成を中止した。");return;
+      }
+      lg("破損した現行Saveは失敗退避に保護した。正常なバックアップは保持する。");
+    }
+  }
   newGame();
 }
 function makeQuestOffer(qType){
@@ -1346,6 +1522,21 @@ function startQuest(){
   lg("冒険へ出発。"+S.quest.type+"依頼：危険度"+S.exploration.danger+" / 目的 "+(S.travelDest||S.world.region)+"（拠点 "+S.world.region+"）。");
   render();
 }
+// V3 P2 field follow-up: one additional non-combat regional survey after a successful quest.
+// Uses the existing regional event table, not a new quest, market tick or reward loop.
+function startLocalExploration(){
+  const prev=S&&S.exploration;
+  if(!S||!S.away||S.battle||!S.quest||!S.quest.done||!prev||!prev.resolved||prev.localOnly||prev.localSurveyUsed){
+    return lg("現地調査は依頼達成後、帰還前に一度だけ実行できます。");
+  }
+  const rp=regionProfile(activeRegion(S));
+  if(!Array.isArray(rp.events)||!rp.events.length)return lg("この地域では現在、調査できる出来事がありません。");
+  const event=pick(rp.events);
+  S.exploration={danger:prev.danger,event,resolved:false,battleEdge:prev.battleEdge,result:"",localOnly:true,localSurveyUsed:true};
+  S.phase="exploration";
+  lg("依頼達成後の現地調査を開始："+activeRegion(S)+"。戦闘・追加依頼報酬は発生しません。");
+  render();
+}
 function resolveExploration(choice){
   if(!S.away||S.phase!=="exploration"||!S.exploration||S.exploration.resolved)
     return lg("今は探索イベントを解決できない。");
@@ -1479,6 +1670,13 @@ function resolveExploration(choice){
   }
   S.exploration.resolved=true;S.exploration.result=result;
   lg(e.name+"："+result);
+  if(S.exploration.localOnly){
+    // Preserve S.quest.done and the sole quest reward route (returnTown).
+    S.phase="field";
+    lg("現地調査を終了。帰還して依頼報酬を精算できます。");
+    render();
+    return;
+  }
   beginBattleFromExploration();
 }
 function beginBattleFromExploration(){
@@ -3181,7 +3379,12 @@ function renderEconPanel(){
     +(S.away||S.battle?' ／ 町サービスは拠点のみ':'');
   if(S.away||S.battle){box.innerHTML='';return;}
   if(S.econUi==='shop'){
-    ensureShopStock(S);refreshShopPrices(S);
+    // HQ+Grok P2 Takeover: never init stock or refresh prices as side effect of rendering.
+    // Explicit openShop()/buyShopItem() and world day ticks remain the only mutators.
+    if(!Array.isArray(S.shopStock)||!S.shopStock.length){
+      box.innerHTML='<div class="s">在庫情報は未準備です。上の「ショップ」を押して開き直してください。</div>';
+      return;
+    }
     box.innerHTML=S.shopStock.map((it,i)=>'<div class="u"><b>'+v17EscapeHtml(it.name)+'</b><div class="s">'
       +(it.kind==='weapon'?v17EscapeHtml(it.category)+' 耐久'+v17EscapeHtml(it.maxDurability):'')
       +(it.kind==='material'?'素材':it.kind==='consumable'?'消耗品':'')
@@ -3810,12 +4013,12 @@ function renderNationPanel(){
   const st=document.getElementById("nationStatus");
   const box=document.getElementById("nationPanel");
   if(!st||!box)return;
-  ensureNationLite(S);ensureBorderLite(S);ensureInfraLite(S);ensureLogisticsBands(S);try{v17Ensure(S);}catch(e){}
+  ensureNationLite(S);ensureBorderLite(S);ensureInfraLite(S);try{v17Ensure(S);}catch(e){}
   const region=S.world?.region||"";
   const polId=polityOfRegion(region);
   const pol=S.nationLite[polId];
   const border=evaluateBorderCrossing(S,region);
-  const band=S.logisticsBands[region]||"normal";
+  const band=(S.logisticsBands&&S.logisticsBands[region])||"normal";
   const well=wellStatus(S,region);
   const inn=innServiceMod(S,region);
   st.textContent="現在地 "+region+" / 統治圏 "+(pol?.label||"?")+"（仮配置） / 物流帯 "+band
@@ -3922,8 +4125,8 @@ function debugDisaster(type){
 function marketPriceFactorWithLogistics(state){
   let f=1;
   try{f=marketPriceFactorBase(state);}catch(e){f=1;}
-  ensureLogisticsBands(state);
-  const band=state.logisticsBands[state.world?.region]||"normal";
+  const bands=(state.logisticsBands&&typeof state.logisticsBands==="object")?state.logisticsBands:null;
+  const band=(bands?bands[state.world?.region]:null)||"normal";
   if(band==="low")f*=1.15;
   if(band==="high")f*=0.92;
   // Fire's market damage has a measurable economic consequence in the market region.
@@ -3994,7 +4197,7 @@ function save(){
     lg("保存した。");
   }catch(e){lg("保存に失敗した。")}
 }
-const LEGACY_SAVE_KEYS=["wander_trpg_v190_hq_r4_html","wander_trpg_v190_hq_r4_html.bak","wander_trpg_v160_nation_html","wander_trpg_v160_nation_html.bak","wander_trpg_v180_close_html","wander_trpg_v180_close_html.bak","wander_trpg_v150_social_html","wander_trpg_v150_social_html.bak","wander_trpg_v140_economy_html","wander_trpg_v140_economy_html.bak","wander_trpg_v130_expedition_html","wander_trpg_v130_expedition_html.bak","wander_trpg_v120_repeatable_html","wander_trpg_v120_repeatable_html.bak","wander_trpg_v110_worldsim_html","wander_trpg_v110_worldsim_html.bak","wander_trpg_v100_stable_html","wander_trpg_v100_stable_html.bak","wander_trpg_v061_stability_html","wander_trpg_v060_prototype5_html","wander_trpg_v059_arsenal15_html","wander_trpg_v058_masspack6_html","wander_trpg_v057_masspack5_html","wander_trpg_v056_masspack4_html","wander_trpg_v055_masspack3_html","wander_trpg_v054_baseregions_html","wander_trpg_v053_masspack2_html","wander_trpg_v052_masspack1_html","wander_trpg_v051_premass_html","wander_trpg_v050_content_html","wander_trpg_v040_questbranch_html","wander_trpg_v040_integration_html","wander_trpg_v031_clearloop_html","wander_trpg_v03_html","wander_v01","wander_trpg_v01_html","wander_trpg_v1_html","wander_trpg_html"];
+const LEGACY_SAVE_KEYS=["wander_trpg_v300_f1dev_html","wander_trpg_v300_f1dev_html.bak","wander_trpg_v200_stable_html","wander_trpg_v200_stable_html.bak","wander_trpg_v190_hq_r4_html","wander_trpg_v190_hq_r4_html.bak","wander_trpg_v160_nation_html","wander_trpg_v160_nation_html.bak","wander_trpg_v180_close_html","wander_trpg_v180_close_html.bak","wander_trpg_v150_social_html","wander_trpg_v150_social_html.bak","wander_trpg_v140_economy_html","wander_trpg_v140_economy_html.bak","wander_trpg_v130_expedition_html","wander_trpg_v130_expedition_html.bak","wander_trpg_v120_repeatable_html","wander_trpg_v120_repeatable_html.bak","wander_trpg_v110_worldsim_html","wander_trpg_v110_worldsim_html.bak","wander_trpg_v100_stable_html","wander_trpg_v100_stable_html.bak","wander_trpg_v061_stability_html","wander_trpg_v060_prototype5_html","wander_trpg_v059_arsenal15_html","wander_trpg_v058_masspack6_html","wander_trpg_v057_masspack5_html","wander_trpg_v056_masspack4_html","wander_trpg_v055_masspack3_html","wander_trpg_v054_baseregions_html","wander_trpg_v053_masspack2_html","wander_trpg_v052_masspack1_html","wander_trpg_v051_premass_html","wander_trpg_v050_content_html","wander_trpg_v040_questbranch_html","wander_trpg_v040_integration_html","wander_trpg_v031_clearloop_html","wander_trpg_v03_html","wander_v01","wander_trpg_v01_html","wander_trpg_v1_html","wander_trpg_html"];
 function migrateSave(input){
   if(!input||typeof input!=="object"||!Array.isArray(input.party)||!input.party.length)
     throw new Error("パーティーデータが不正");
@@ -4311,9 +4514,13 @@ function setSteps(i,v){S.party[i].moveSteps=Number(v)}
 
 
 function renderLog(){
+  const entries=S.logs.join("\n");
   const el=document.getElementById("log");
-  el.textContent=S.logs.join("\n");
+  el.textContent=entries;
   el.scrollTop=el.scrollHeight;
+  // Read-only mirror at the BOTTOM of the adventure page; no second game log.
+  const battleEl=document.getElementById("battleLog");
+  if(battleEl){battleEl.textContent=entries; battleEl.scrollTop=battleEl.scrollHeight;}
 }
 function render(){
   syncTargets();
@@ -4347,9 +4554,13 @@ function render(){
       +(ex.result?" / "+ex.result:"")
     :S.phase==="battle"&&ex
       ?"探索結果："+(ex.result||"戦闘へ移行")
+      :S.away&&S.quest&&S.quest.done&&ex
+      ?"遠征先："+activeRegion(S)+" ／ 依頼達成。"+(ex.result||"現地調査か帰還を選択できます。")
       :"拠点待機中";
   document.getElementById("btnCareful").disabled=S.phase!=="exploration"||!ex||!!ex.resolved;
   document.getElementById("btnRush").disabled=S.phase!=="exploration"||!ex||!!ex.resolved;
+  const localBtn=document.getElementById("btnLocalExplore");
+  if(localBtn)localBtn.disabled=!S.away||S.battle||!S.quest||!S.quest.done||!ex||!ex.resolved||!!ex.localOnly||!!ex.localSurveyUsed;
   document.getElementById("btnStart").disabled=!!S.battle||!!S.away||!S.quest;
   document.getElementById("btnGen").disabled=!!S.away||!!S.battle;
   document.getElementById("btnReturn").disabled=!S.away;
@@ -4498,7 +4709,22 @@ function render(){
       +Object.keys(ACTIONS).map(k=>'<option value="'+k+'"'+(u.act===k?' selected':'')+'>'+ACTIONS[k]+'</option>').join("")
       +'</select>'+extra+'</div></div>';
   }).join("")+Array(Math.max(0,6-S.party.length)).fill('<div class="u s">空き枠</div>').join("");
-
+  // Move the ONE existing party control DOM to the adventure page during battle.
+  // Do not duplicate selects, listeners, model writes, or Save fields.
+  const partyCard=document.getElementById("partyCard");
+  const partyHost=document.getElementById("battlePartyHost");
+  const partyHome=document.getElementById("partyHome");
+  const battleCommands=document.getElementById("battleCommandCard");
+  const partyBattleNote=document.getElementById("partyBattleNote");
+  if(S.battle){
+    if(partyCard.parentElement!==partyHost)partyHost.appendChild(partyCard);
+    battleCommands.hidden=false;
+    partyBattleNote.hidden=false;
+  }else{
+    if(partyCard.parentElement!==partyHome)partyHome.appendChild(partyCard);
+    battleCommands.hidden=true;
+    partyBattleNote.hidden=true;
+  }
 
   document.getElementById("enemies").innerHTML=S.en.length?S.en.map(e=>{
     const st=eff(e);
@@ -4953,6 +5179,23 @@ function v19ExportHistory(){
 }
 /* V19_LONGWORLD_END */
 
+function v3PreserveFailedBoot(raw){
+  if(!raw)return true;
+  const main=SAVE_KEY+'.failed';
+  try{
+    if(localStorage.getItem(main)===raw)return true;
+    if(localStorage.getItem(main)===null){
+      localStorage.setItem(main,raw);
+      return localStorage.getItem(main)===raw;
+    }
+    for(let i=1;i<=64;i++){
+      const k=main+'.'+i, existing=localStorage.getItem(k);
+      if(existing===raw)return true;
+      if(existing===null){localStorage.setItem(k,raw);return localStorage.getItem(k)===raw;}
+    }
+  }catch(e){console.error('[failed save collision quarantine]',e);}
+  return false;
+}
 function boot(){
   let has=false,failedCurrent=null;
   try{
@@ -4962,7 +5205,12 @@ function boot(){
   if(has){
     S=emptyState();
     if(!load()){
-      try{if(failedCurrent)localStorage.setItem(SAVE_KEY+".failed",failedCurrent);}catch(e){}
+      if(failedCurrent&&!v3PreserveFailedBoot(failedCurrent)){
+        console.error('[Save preservation blocker] Unable to protect corrupted current; automatic newGame cancelled.');
+        const el=document.getElementById('world');
+        if(el)el.textContent='破損Saveの安全退避に失敗。既存Saveを保護するため新世界の自動保存を中止。';
+        return;
+      }
       newGame();
       if(failedCurrent)lg("読込不能な現行セーブを .failed に退避し、新世界を生成した。");
     }
@@ -5283,6 +5531,485 @@ function simRender(){
 }
 
 boot();
+
+
+/* V3 F1 shell controller — display only; does not call render/save/ticks/ensure */
+(function(){
+  var LABELS={hub:"拠点・生活",adv:"冒険・戦闘",party:"人物・育成",world:"世界・社会",log:"記録・管理"};
+  var current="hub";
+  function getS(){
+    try{ if(typeof S!=="undefined" && S) return S; }catch(e){}
+    return null;
+  }
+  function refreshHud(){
+    var s=getS();
+    var el=function(id){return document.getElementById(id)};
+    var scene=el("f1HudScene"); if(scene) scene.textContent=LABELS[current]||current;
+    if(!s){
+      ["f1HudPlace","f1HudDay","f1HudGold","f1HudFood","f1HudWater","f1HudFatigue","f1HudInjury","f1HudFlags"]
+        .forEach(function(id){var n=el(id); if(n) n.textContent="—";});
+      return;
+    }
+    var place=(s.world && (s.world.region||"")) ? ((s.world.region||"")+" / "+(s.world.town||"")) : "—";
+    var set=function(id,v){var n=el(id); if(n) n.textContent=v;};
+    set("f1HudPlace", place);
+    set("f1HudDay", String(s.day!=null?s.day:"—"));
+    set("f1HudGold", String(s.gold!=null?s.gold:"—"));
+    set("f1HudFood", String(s.res&&s.res.food!=null?s.res.food:"—"));
+    set("f1HudWater", String(s.res&&s.res.water!=null?s.res.water:"—"));
+    set("f1HudFatigue", String(s.res&&s.res.fatigue!=null?s.res.fatigue:"—"));
+    set("f1HudInjury", String(s.res&&s.res.injury!=null?s.res.injury:"—"));
+    var flags=[];
+    if(s.battle) flags.push("戦闘中");
+    if(s.away) flags.push("遠征中");
+    if(s.phase) flags.push(String(s.phase));
+    set("f1HudFlags", flags.length?flags.join(","):"拠点");
+  }
+  function showPane(id){
+    if(!LABELS[id]) return;
+    current=id;
+    var panes=document.querySelectorAll(".f1-pane");
+    for(var i=0;i<panes.length;i++){
+      var p=panes[i];
+      if(p.getAttribute("data-f1-pane")===id) p.classList.add("f1-show");
+      else p.classList.remove("f1-show");
+    }
+    var btns=document.querySelectorAll("#f1Nav button[data-f1-go]");
+    for(var j=0;j<btns.length;j++){
+      var b=btns[j];
+      if(b.getAttribute("data-f1-go")===id) b.classList.add("f1-active");
+      else b.classList.remove("f1-active");
+    }
+    refreshHud();
+  }
+  function onReady(){
+    document.body.classList.add("f1-shell");
+    var nav=document.getElementById("f1Nav");
+    if(nav){
+      nav.addEventListener("click", function(ev){
+        var t=ev.target;
+        if(t && t.getAttribute && t.getAttribute("data-f1-go")){
+          showPane(t.getAttribute("data-f1-go"));
+        }
+      });
+    }
+    showPane("hub");
+    setInterval(refreshHud, 1500);
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", onReady);
+  else onReady();
+  window.F1Shell={showPane:showPane,refreshHud:refreshHud,getCurrent:function(){return current;}};
+})();
+
+
+
+/* ===== V3 F2 MVP3.0-A: return receipt + life guides (no double reward) ===== */
+(function(){
+  "use strict";
+  var F2 = {
+    departSnap: null,
+    preReturn: null,
+    receipt: null,
+    lastLifeDiff: null,
+    pendingRestPreview: null,
+    activeTab: "rest"
+  };
+  window.__F2UI = F2;
+
+  function snapBasic(s){
+    if(!s) return null;
+    var mats = s.materials || {};
+    var party = (s.party||[]).map(function(u){
+      var w = u.weapon || null;
+      return {
+        id:u.id, name:u.name, hero:!!u.hero, hp:u.hp, maxHp:u.maxHp,
+        weaponName: w ? (w.name||"—") : null,
+        durability: w && typeof w.durability==="number" ? w.durability : null,
+        maxDurability: w && typeof w.maxDurability==="number" ? w.maxDurability : null
+      };
+    });
+    return {
+      day: s.day, gold: s.gold,
+      food: s.res && s.res.food, water: s.res && s.res.water,
+      fatigue: s.res && s.res.fatigue, injury: s.res && s.res.injury,
+      ore: mats.ore||0, hide: mats.hide||0, herb: mats.herb||0, scrap: mats.scrap||0,
+      clearCount: s.clearCount||0, away: !!s.away, battle: !!s.battle, phase: s.phase,
+      questTitle: s.quest && (s.quest.title || s.quest.type) || null,
+      questDone: !!(s.quest && s.quest.done), party: party
+    };
+  }
+  function delta(a,b,key){
+    if(a==null||b==null) return null;
+    var x=a[key], y=b[key];
+    if(typeof x==="number" && typeof y==="number") return y-x;
+    return null;
+  }
+  function fmtDelta(n){
+    if(n==null||!isFinite(n)) return "—";
+    if(n>0) return "+"+n;
+    return String(n);
+  }
+  function outcomeLabel(rec){
+    if(!rec) return "—";
+    if(rec.outcome==="success") return "成功（依頼達成）";
+    if(rec.outcome==="rescue_retreat") return "救出撤退（未達）";
+    if(rec.outcome==="retreat") return "撤退（未達）";
+    return rec.outcome||"未達";
+  }
+  function atTown(){
+    try{ if(typeof S==="undefined"||!S) return false; return !S.away && !S.battle; }
+    catch(e){ return false; }
+  }
+  function renderReceipt(){
+    var el = document.getElementById("f2Receipt");
+    if(!el) return;
+    var rec = F2.receipt;
+    if(!rec){ el.textContent = "まだ帰還記録がありません。遠征から帰還するとここに結果が残ります。"; return; }
+    var lines = [];
+    lines.push("【帰還結果】"+outcomeLabel(rec));
+    lines.push("依頼: "+(rec.questTitle||"—"));
+    lines.push("Day "+rec.before.day+" → "+rec.after.day+"（"+fmtDelta(delta(rec.before,rec.after,"day"))+"日）");
+    lines.push("通貨 "+rec.before.gold+" → "+rec.after.gold+"（"+fmtDelta(delta(rec.before,rec.after,"gold"))+"）");
+    lines.push("食料 "+rec.before.food+" → "+rec.after.food+"（"+fmtDelta(delta(rec.before,rec.after,"food"))+"）");
+    lines.push("水 "+rec.before.water+" → "+rec.after.water+"（"+fmtDelta(delta(rec.before,rec.after,"water"))+"）");
+    lines.push("疲労 "+rec.before.fatigue+" → "+rec.after.fatigue+"（"+fmtDelta(delta(rec.before,rec.after,"fatigue"))+"）");
+    lines.push("負傷 "+rec.before.injury+" → "+rec.after.injury+"（"+fmtDelta(delta(rec.before,rec.after,"injury"))+"）");
+    lines.push("素材 鉱"+rec.before.ore+"→"+rec.after.ore+" / 皮"+rec.before.hide+"→"+rec.after.hide+" / 草"+rec.before.herb+"→"+rec.after.herb+" / 屑"+rec.before.scrap+"→"+rec.after.scrap);
+    lines.push("累積依頼達成 "+(rec.before.clearCount||0)+" → "+(rec.after.clearCount||0)+"（"+fmtDelta(delta(rec.before,rec.after,"clearCount"))+"）");
+    if(rec.before.party && rec.after.party){
+      var hpLines = [];
+      for(var i=0;i<rec.before.party.length;i++){
+        var bp=rec.before.party[i], ap=rec.after.party[i];
+        if(!bp||!ap) continue;
+        hpLines.push((bp.name||"?")+": "+bp.hp+"/"+bp.maxHp+" → "+ap.hp+"/"+ap.maxHp);
+      }
+      if(hpLines.length) lines.push("仲間HP: "+hpLines.join(" / "));
+    }
+    if(rec.depart){
+      lines.push("【出発時比較】Day "+rec.depart.day+" 通貨"+rec.depart.gold+" 食"+rec.depart.food+"/水"+rec.depart.water+" 疲"+rec.depart.fatigue+"/傷"+rec.depart.injury);
+      lines.push("出発→帰還: 日数"+fmtDelta(delta(rec.depart,rec.after,"day"))+" 通貨"+fmtDelta(delta(rec.depart,rec.after,"gold"))+" 食"+fmtDelta(delta(rec.depart,rec.after,"food"))+" 水"+fmtDelta(delta(rec.depart,rec.after,"water")));
+    }
+    lines.push("※この表示は記録の再読取です。報酬や世界更新は再実行していません。");
+    el.textContent = lines.join("\n");
+  }
+  function renderLifeDiff(){
+    var el = document.getElementById("f2LifeResult");
+    if(!el) return;
+    if(!F2.lastLifeDiff){ el.textContent = ""; return; }
+    var d = F2.lastLifeDiff;
+    var lines = ["【"+d.action+" 実行結果】"];
+    if(d.cancelled){ lines.push(d.reason || "キャンセルまたは条件未達のため実行していません。"); el.textContent = lines.join("\n"); return; }
+    var b=d.before, a=d.after;
+    lines.push("Day "+b.day+" → "+a.day+"（"+fmtDelta(delta(b,a,"day"))+"）");
+    lines.push("通貨 "+b.gold+" → "+a.gold+"（"+fmtDelta(delta(b,a,"gold"))+"）");
+    lines.push("食料 "+b.food+" → "+a.food+" / 水 "+b.water+" → "+a.water);
+    lines.push("疲労 "+b.fatigue+" → "+a.fatigue+" / 負傷 "+b.injury+" → "+a.injury);
+    if(b.party && a.party){
+      for(var i=0;i<b.party.length;i++){
+        var bp=b.party[i], ap=a.party[i];
+        if(!bp||!ap) continue;
+        if(bp.durability!=null && ap.durability!=null && bp.durability!==ap.durability){
+          lines.push((bp.name||"装備")+" 耐久 "+bp.durability+" → "+ap.durability+(bp.maxDurability!=null?" /"+bp.maxDurability:""));
+        }
+      }
+    }
+    el.textContent = lines.join("\n");
+  }
+  function updateCompareBar(){
+    var bar = document.getElementById("f2CompareBar");
+    if(!bar) return;
+    try{
+      if(typeof S==="undefined"||!S){ bar.textContent=""; return; }
+      var gold=S.gold||0, food=(S.res&&S.res.food)||0, water=(S.res&&S.res.water)||0;
+      var fat=(S.res&&S.res.fatigue)||0, inj=(S.res&&S.res.injury)||0;
+      var needRest=false, needRepair=false, lowSupply=food<6||water<6;
+      (S.party||[]).forEach(function(u){
+        if(u.hp<u.maxHp) needRest=true;
+        var w=u.weapon;
+        if(w&&typeof w.durability==="number"&&typeof w.maxDurability==="number"&&w.durability<w.maxDurability) needRepair=true;
+      });
+      if(fat>0||inj>0) needRest=true;
+      var parts=[];
+      parts.push("<span>通貨:"+gold+"</span>");
+      parts.push("<span>食:"+food+"/水:"+water+"</span>");
+      parts.push("<span>疲:"+fat+"/傷:"+inj+"</span>");
+      if(needRest) parts.push("<span class=\"f2-warn\">休養推奨</span>");
+      if(needRepair) parts.push("<span class=\"f2-warn\">修理推奨</span>");
+      if(lowSupply) parts.push("<span class=\"f2-warn\">補給推奨</span>");
+      if(!atTown()) parts.push("<span class=\"f2-warn\">遠征/戦闘中・拠点操作不可</span>");
+      bar.innerHTML = parts.join(" ");
+    }catch(e){ bar.textContent=""; }
+  }
+  function readShopStockSafe(){
+    try{
+      if(typeof S==="undefined"||!S) return {ready:false,reason:"状態なし",items:[]};
+      if(!Array.isArray(S.shopStock)||!S.shopStock.length)
+        return {ready:false,reason:"ショップ在庫が未準備（既存ショップ画面を開くと生成されます）",items:[]};
+      var items=S.shopStock.map(function(it,idx){
+        return {idx:idx,id:it.id,name:it.name||it.id||"?",kind:it.kind,
+          stock:typeof it.stock==="number"?it.stock:null,
+          price:typeof it.price==="number"?it.price:null,effect:it.effect||null,mat:it.mat||null};
+      });
+      return {ready:true,reason:null,items:items};
+    }catch(e){ return {ready:false,reason:"参照失敗: "+e,items:[]}; }
+  }
+  function readWeaponStatusSafe(){
+    try{
+      if(typeof S==="undefined"||!S) return [];
+      return (S.party||[]).map(function(u){
+        var w=u.weapon;
+        if(!w) return {name:u.name,hasWeapon:false};
+        return {name:u.name,hasWeapon:true,weaponName:w.name||"—",
+          durability:typeof w.durability==="number"?w.durability:null,
+          maxDurability:typeof w.maxDurability==="number"?w.maxDurability:null,
+          missing:(typeof w.durability==="number"&&typeof w.maxDurability==="number")?Math.max(0,w.maxDurability-w.durability):null};
+      });
+    }catch(e){ return []; }
+  }
+  function previewRest(){
+    var box=document.getElementById("f2RestPreview");
+    if(!box) return;
+    if(!atTown()){ F2.pendingRestPreview=null; box.textContent="遠征中または戦闘中は休養できません。"; return; }
+    try{
+      if(typeof S==="undefined"||!S){ box.textContent="状態がありません。"; return; }
+      var needs=(S.party||[]).some(function(a){return a.hp<a.maxHp;})
+        ||(S.res.fatigue>0)||(S.res.injury>0)||(S.res.food<6)||(S.res.water<6);
+      if(!needs){ F2.pendingRestPreview={needed:false}; box.textContent="特に休養の必要はありません（既存townRestと同じ判定）。"; return; }
+      var days=(S.res.injury>20||S.res.fatigue>50)?2:1;
+      var foodCost=Math.min(S.res.food,2+days), waterCost=Math.min(S.res.water,2+days);
+      var lines=[];
+      lines.push("【休養見込み（既存townRestの条件に基づく表示）】");
+      lines.push("予定日数: "+days+"日（宿代の追加徴収なし）");
+      lines.push("消費見込み: 食料-"+foodCost+" / 水-"+waterCost);
+      lines.push("その後、拠点で食料・水が補充され、疲労・負傷・HPが回復します。");
+      if((S.gold||0)<=0) lines.push("所持金0以下: 既存の賄い仕事救済（+2通貨）が適用される場合があります。");
+      lines.push("確定するには「確認して休養する」を押してください。");
+      F2.pendingRestPreview={needed:true,days:days,foodCost:foodCost,waterCost:waterCost};
+      box.textContent=lines.join("\n");
+    }catch(e){ box.textContent="見込み表示に失敗: "+e; }
+  }
+  function doRestConfirmed(){
+    if(!atTown()){ F2.lastLifeDiff={action:"休養",cancelled:true,reason:"遠征中または戦闘中のため実行しません。"}; renderLifeDiff(); return; }
+    if(typeof townRest!=="function"){ F2.lastLifeDiff={action:"休養",cancelled:true,reason:"townRest がありません。"}; renderLifeDiff(); return; }
+    previewRest();
+    var prev=F2.pendingRestPreview;
+    if(prev&&prev.needed===false){ F2.lastLifeDiff={action:"休養",cancelled:true,reason:"休養の必要がないため実行しません。"}; renderLifeDiff(); return; }
+    var msg="既存の休養処理を1回だけ実行します。よろしいですか？";
+    if(prev&&prev.needed) msg="休養 "+prev.days+"日（食料-"+prev.foodCost+"/水-"+prev.waterCost+"見込み）を実行しますか？\n宿代の追加徴収はありません。";
+    if(typeof confirm==="function"&&!confirm(msg)){ F2.lastLifeDiff={action:"休養",cancelled:true,reason:"ユーザーがキャンセルしました。"}; renderLifeDiff(); return; }
+    var before=snapBasic(S);
+    try{ townRest(); }catch(e){ F2.lastLifeDiff={action:"休養",cancelled:true,reason:"例外: "+e}; renderLifeDiff(); return; }
+    var after=snapBasic(S);
+    F2.lastLifeDiff={action:"休養",cancelled:false,before:before,after:after};
+    renderLifeDiff(); updateCompareBar(); renderGuide(F2.activeTab);
+    if(window.F1Shell&&F1Shell.refreshHud) F1Shell.refreshHud();
+  }
+  function guardTownAction(label,fn){
+    if(!atTown()){ F2.lastLifeDiff={action:label,cancelled:true,reason:"遠征中または戦闘中のため拠点操作を拒否しました。"}; renderLifeDiff(); return; }
+    try{ fn(); }catch(e){ F2.lastLifeDiff={action:label,cancelled:true,reason:"例外: "+e}; renderLifeDiff(); }
+  }
+  function renderGuide(tab){
+    F2.activeTab=tab||F2.activeTab||"rest";
+    var titleEl=document.getElementById("f2GuideTitle");
+    var detailEl=document.getElementById("f2GuideDetail");
+    var actionsEl=document.getElementById("f2GuideActions");
+    if(!detailEl||!actionsEl) return;
+    var tabs=document.querySelectorAll("#f2PriorityTabs button");
+    for(var t=0;t<tabs.length;t++){
+      var btn=tabs[t], isActive=btn.getAttribute("data-f2-tab")===F2.activeTab;
+      btn.classList.toggle("f2-tab-active",isActive);
+      btn.setAttribute("aria-selected",isActive?"true":"false");
+    }
+    actionsEl.innerHTML="";
+    var lines=[], gold=0;
+    try{ gold=(typeof S!=="undefined"&&S)?(S.gold||0):0; }catch(e){}
+    if(F2.activeTab==="rest"){
+      if(titleEl) titleEl.textContent="休養優先";
+      lines.push("現状の疲労・負傷・HP・食水を確認し、必要なら既存townRestを1回だけ実行します。");
+      lines.push("宿代の追加徴収はありません。1日または2日が既存判定で決まります。");
+      if(!atTown()) lines.push("【実行不可】遠征中または戦闘中です。");
+      else try{
+        if(typeof S!=="undefined"&&S){
+          var needs=(S.party||[]).some(function(a){return a.hp<a.maxHp;})
+            ||(S.res.fatigue>0)||(S.res.injury>0)||(S.res.food<6)||(S.res.water<6);
+          if(!needs) lines.push("現在は休養の必要がありません（既存判定と同じ）。");
+          else{ var days=(S.res.injury>20||S.res.fatigue>50)?2:1; lines.push("見込み: "+days+"日 / 食料・水を一部消費後に補充。");
+            if(gold<=0) lines.push("所持金0: 既存の賄い仕事救済（+2）が適用される場合があります。"); }
+        }
+      }catch(e){ lines.push("状態参照失敗。"); }
+      detailEl.textContent=lines.join("\n");
+      var b1=document.createElement("button"); b1.type="button"; b1.id="f2BtnPreviewRest"; b1.textContent="休養の見込みを見る";
+      b1.addEventListener("click",function(){ previewRest(); }); actionsEl.appendChild(b1);
+      var b2=document.createElement("button"); b2.type="button"; b2.id="f2BtnDoRest"; b2.textContent="確認して休養する";
+      b2.addEventListener("click",function(){ doRestConfirmed(); }); actionsEl.appendChild(b2);
+    } else if(F2.activeTab==="equip"){
+      if(titleEl) titleEl.textContent="装備整備優先";
+      lines.push("所持金と現在の武器耐久を表示します。修理の実行は既存鍛冶操作に委ねます。");
+      lines.push("価格は状態不変の純粋計算が保証できないため、架空価格は出しません。");
+      lines.push("所持金: "+gold+" 通貨");
+      var weapons=readWeaponStatusSafe();
+      if(!weapons.length) lines.push("パーティー情報がありません。");
+      else{
+        var anyMissing=false;
+        weapons.forEach(function(w){
+          if(!w.hasWeapon) lines.push(w.name+": 武器なし");
+          else if(w.missing!=null&&w.missing>0){ anyMissing=true; lines.push(w.name+": "+w.weaponName+" 耐久 "+w.durability+"/"+w.maxDurability+"（不足"+w.missing+"）"); }
+          else if(w.durability!=null) lines.push(w.name+": "+w.weaponName+" 耐久 "+w.durability+"/"+(w.maxDurability!=null?w.maxDurability:"?")+"（健全）");
+          else lines.push(w.name+": "+w.weaponName+" 耐久情報なし");
+        });
+        if(!anyMissing) lines.push("修理が必要な装備はありません（表示上）。");
+        else lines.push("正確な修理費用は「鍛冶画面で確認」してください。");
+      }
+      if(!atTown()) lines.push("【実行不可】遠征中または戦闘中です。");
+      detailEl.textContent=lines.join("\n");
+      var bs=document.createElement("button"); bs.type="button"; bs.id="f2BtnSmith"; bs.textContent="鍛冶を開く（本修理）";
+      bs.addEventListener("click",function(){ guardTownAction("鍛冶",function(){ if(typeof openSmith==="function") openSmith(); }); });
+      actionsEl.appendChild(bs);
+    } else if(F2.activeTab==="supply"){
+      if(titleEl) titleEl.textContent="補給優先";
+      lines.push("既存ショップの在庫・表示価格を安全に参照します（ensureShopStock / refreshShopPrices は呼びません）。");
+      lines.push("購買の状態変更は既存ショップ機能のみが行います。所持金: "+gold+" 通貨");
+      var shop=readShopStockSafe();
+      if(!shop.ready){ lines.push("【在庫】"+shop.reason); lines.push("ショップ画面を開くと既存処理で在庫が準備されます。"); }
+      else{
+        var foodItems=[], waterItems=[], other=[];
+        shop.items.forEach(function(it){
+          var line=it.name+" 価格:"+(it.price!=null?it.price:"未確定")+" 在庫:"+(it.stock!=null?it.stock:"?");
+          if(it.kind==="consumable"&&it.effect==="food") foodItems.push(line);
+          else if(it.kind==="consumable"&&it.effect==="water") waterItems.push(line);
+          else other.push(line);
+        });
+        if(foodItems.length){ lines.push("【食料】"); foodItems.forEach(function(l){ lines.push("  "+l); }); }
+        else lines.push("【食料】該当なし or 在庫0");
+        if(waterItems.length){ lines.push("【水】"); waterItems.forEach(function(l){ lines.push("  "+l); }); }
+        else lines.push("【水】該当なし or 在庫0");
+        if(other.length){ lines.push("【その他（抜粋）】"); other.slice(0,4).forEach(function(l){ lines.push("  "+l); }); }
+      }
+      if(!atTown()) lines.push("【実行不可】遠征中または戦闘中です。");
+      lines.push("売却・倉庫機能は現行コードに安全な正規処理が特定できないため未決・次段送りです。");
+      detailEl.textContent=lines.join("\n");
+      var bsh=document.createElement("button"); bsh.type="button"; bsh.id="f2BtnShop"; bsh.textContent="ショップを開く";
+      bsh.addEventListener("click",function(){ guardTownAction("ショップ",function(){ if(typeof openShop==="function") openShop(); }); });
+      actionsEl.appendChild(bsh);
+    }
+    updateCompareBar();
+  }
+  function setTab(tab){ renderGuide(tab); }
+  function wrapReturnTown(){
+    if(typeof returnTown!=="function") return;
+    if(returnTown.__f2Wrapped) return;
+    var orig=returnTown;
+    function wrapped(){
+      var before=null;
+      try{ before=snapBasic(S); }catch(e){}
+      if(!before||!before.away) return orig.apply(this,arguments);
+      F2.preReturn=before;
+      var result=orig.apply(this,arguments);
+      try{
+        var after=snapBasic(S);
+        var outcome="unknown";
+        if(S&&Array.isArray(S.questHistory)&&S.questHistory.length){
+          var last=S.questHistory[S.questHistory.length-1];
+          if(last&&last.outcome) outcome=last.outcome;
+        }else if(before&&after){ if((after.clearCount||0)>(before.clearCount||0)) outcome="success"; }
+        if(S&&S.away) return result;
+        F2.receipt={outcome:outcome,questTitle:before&&before.questTitle,before:before,after:after,depart:F2.departSnap,at:Date.now()};
+        F2.departSnap=null;
+        renderReceipt(); updateCompareBar(); renderGuide(F2.activeTab);
+        if(window.F1Shell&&F1Shell.showPane){ try{ F1Shell.showPane("hub"); }catch(e){} }
+        if(window.F1Shell&&F1Shell.refreshHud) F1Shell.refreshHud();
+      }catch(e){}
+      return result;
+    }
+    wrapped.__f2Wrapped=true; returnTown=wrapped;
+    try{ window.returnTown=wrapped; }catch(e){}
+  }
+  function wrapStartQuest(){
+    if(typeof startQuest!=="function") return;
+    if(startQuest.__f2Wrapped) return;
+    var orig=startQuest;
+    function wrapped(){
+      var wasAway=false, before=null;
+      try{ wasAway=!!S.away; if(!wasAway) before=snapBasic(S); }catch(e){}
+      var result=orig.apply(this,arguments);
+      try{ if(!wasAway&&S&&S.away) F2.departSnap=before; }catch(e){}
+      return result;
+    }
+    wrapped.__f2Wrapped=true; startQuest=wrapped;
+    try{ window.startQuest=wrapped; }catch(e){}
+  }
+  function wrapNewGameAndLoad(){
+    function clearF2(){
+      F2.departSnap=null; F2.preReturn=null; F2.receipt=null; F2.lastLifeDiff=null;
+      F2.pendingRestPreview=null; F2.activeTab="rest";
+      renderReceipt(); renderLifeDiff();
+      var prev=document.getElementById("f2RestPreview"); if(prev) prev.textContent="";
+      updateCompareBar(); renderGuide("rest");
+    }
+    if(typeof confirmNewGame==="function"&&!confirmNewGame.__f2Wrapped){
+      var origNG=confirmNewGame;
+      function wrappedNG(){
+        var sBefore=(typeof S!=="undefined")?S:null;
+        var dayBefore=sBefore&&sBefore.day;
+        var r=origNG.apply(this,arguments);
+        try{
+          var sAfter=(typeof S!=="undefined")?S:null;
+          if(sAfter&&sBefore&&sAfter!==sBefore) clearF2();
+          else if(sAfter&&!sBefore) clearF2();
+        }catch(e){}
+        return r;
+      }
+      wrappedNG.__f2Wrapped=true; confirmNewGame=wrappedNG;
+      try{ window.confirmNewGame=wrappedNG; }catch(e){}
+    }
+    if(typeof load==="function"&&!load.__f2Wrapped){
+      var origLoad=load;
+      function wrappedLoad(){ return origLoad.apply(this,arguments); }
+      wrappedLoad.__f2Wrapped=true; load=wrappedLoad;
+      try{ window.load=wrappedLoad; }catch(e){}
+    }
+    if(typeof useSaveCandidate==="function"&&!useSaveCandidate.__f2Wrapped){
+      var origUSC=useSaveCandidate;
+      function wrappedUSC(){
+        var applied=origUSC.apply(this,arguments);
+        try{ if(applied===true) clearF2(); }catch(e){}
+        return applied;
+      }
+      wrappedUSC.__f2Wrapped=true; useSaveCandidate=wrappedUSC;
+      try{ window.useSaveCandidate=wrappedUSC; }catch(e){}
+    }
+  }
+  function bindButtons(){
+    var byId=function(id){ return document.getElementById(id); };
+    var tabBtns=document.querySelectorAll("#f2PriorityTabs button");
+    for(var i=0;i<tabBtns.length;i++){
+      (function(btn){ btn.addEventListener("click",function(){ setTab(btn.getAttribute("data-f2-tab")||"rest"); }); })(tabBtns[i]);
+    }
+    var b;
+    b=byId("f2BtnNextQuest"); if(b) b.addEventListener("click",function(){ if(window.F1Shell&&F1Shell.showPane) F1Shell.showPane("adv"); });
+    b=byId("f2BtnCraft"); if(b) b.addEventListener("click",function(){ guardTownAction("クラフト",function(){ if(typeof openCraft==="function") openCraft(); }); });
+    b=byId("f2BtnStay30"); if(b) b.addEventListener("click",function(){
+      if(!atTown()){ F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"遠征中または戦闘中のため実行しません。"}; renderLifeDiff(); return; }
+      if(typeof v19StayDays!=="function"){ F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"v19StayDaysがありません。"}; renderLifeDiff(); return; }
+      var before=snapBasic(S);
+      try{ v19StayDays(30); }catch(e){ F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"例外: "+e}; renderLifeDiff(); return; }
+      var after=snapBasic(S);
+      if(before&&after&&before.day===after.day&&before.gold===after.gold)
+        F2.lastLifeDiff={action:"30日生活",cancelled:true,reason:"条件未達のため状態は変化していません（既存ガード）。"};
+      else F2.lastLifeDiff={action:"30日生活",cancelled:false,before:before,after:after};
+      renderLifeDiff(); updateCompareBar(); renderGuide(F2.activeTab);
+      if(window.F1Shell&&F1Shell.refreshHud) F1Shell.refreshHud();
+    });
+  }
+  function bootF2(){
+    wrapReturnTown(); wrapStartQuest(); wrapNewGameAndLoad(); bindButtons();
+    renderReceipt(); updateCompareBar(); renderGuide(F2.activeTab||"rest");
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bootF2);
+  else bootF2();
+})();
+
+
 </script>
 </body>
 </html>
