@@ -274,6 +274,10 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       </div>
     </div>
     <div id="explore" class="muted">拠点待機中</div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" id="btnLocalExplore" onclick="startLocalExploration()" disabled>依頼達成後、現地を調査する（1回）</button>
+    </div>
+    <div class="s">現地調査は既存の地域イベントを再利用します。追加戦闘・依頼報酬は発生しません。</div>
   </div>
 
   <div class="c">
@@ -1500,6 +1504,21 @@ function startQuest(){
   lg("冒険へ出発。"+S.quest.type+"依頼：危険度"+S.exploration.danger+" / 目的 "+(S.travelDest||S.world.region)+"（拠点 "+S.world.region+"）。");
   render();
 }
+// V3 P2 field follow-up: one additional non-combat regional survey after a successful quest.
+// Uses the existing regional event table, not a new quest, market tick or reward loop.
+function startLocalExploration(){
+  const prev=S&&S.exploration;
+  if(!S||!S.away||S.battle||!S.quest||!S.quest.done||!prev||!prev.resolved||prev.localOnly||prev.localSurveyUsed){
+    return lg("現地調査は依頼達成後、帰還前に一度だけ実行できます。");
+  }
+  const rp=regionProfile(activeRegion(S));
+  if(!Array.isArray(rp.events)||!rp.events.length)return lg("この地域では現在、調査できる出来事がありません。");
+  const event=pick(rp.events);
+  S.exploration={danger:prev.danger,event,resolved:false,battleEdge:prev.battleEdge,result:"",localOnly:true,localSurveyUsed:true};
+  S.phase="exploration";
+  lg("依頼達成後の現地調査を開始："+activeRegion(S)+"。戦闘・追加依頼報酬は発生しません。");
+  render();
+}
 function resolveExploration(choice){
   if(!S.away||S.phase!=="exploration"||!S.exploration||S.exploration.resolved)
     return lg("今は探索イベントを解決できない。");
@@ -1633,6 +1652,13 @@ function resolveExploration(choice){
   }
   S.exploration.resolved=true;S.exploration.result=result;
   lg(e.name+"："+result);
+  if(S.exploration.localOnly){
+    // Preserve S.quest.done and the sole quest reward route (returnTown).
+    S.phase="field";
+    lg("現地調査を終了。帰還して依頼報酬を精算できます。");
+    render();
+    return;
+  }
   beginBattleFromExploration();
 }
 function beginBattleFromExploration(){
@@ -4510,9 +4536,13 @@ function render(){
       +(ex.result?" / "+ex.result:"")
     :S.phase==="battle"&&ex
       ?"探索結果："+(ex.result||"戦闘へ移行")
+      :S.away&&S.quest&&S.quest.done&&ex
+      ?"遠征先："+activeRegion(S)+" ／ 依頼達成。"+(ex.result||"現地調査か帰還を選択できます。")
       :"拠点待機中";
   document.getElementById("btnCareful").disabled=S.phase!=="exploration"||!ex||!!ex.resolved;
   document.getElementById("btnRush").disabled=S.phase!=="exploration"||!ex||!!ex.resolved;
+  const localBtn=document.getElementById("btnLocalExplore");
+  if(localBtn)localBtn.disabled=!S.away||S.battle||!S.quest||!S.quest.done||!ex||!ex.resolved||!!ex.localOnly||!!ex.localSurveyUsed;
   document.getElementById("btnStart").disabled=!!S.battle||!!S.away||!S.quest;
   document.getElementById("btnGen").disabled=!!S.away||!!S.battle;
   document.getElementById("btnReturn").disabled=!S.away;
