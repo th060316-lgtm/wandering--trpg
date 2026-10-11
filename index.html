@@ -173,6 +173,19 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     </div>
     <div id="quest" class="muted"></div>
     <div id="questOffers" class="g" style="margin-top:8px"></div>
+    <!-- V3_DAILY_MVP_BEGIN: read-only summary and existing-action shortcuts -->
+    <section id="v3DailyMvp" class="u" aria-label="帰還後の日常" style="margin-top:10px">
+      <h3>帰還後の日常・再出発</h3>
+      <div id="v3DailySummary" class="s" style="white-space:pre-wrap"></div>
+      <div class="row" style="margin-top:8px">
+        <button type="button" id="v3DailyRest" onclick="townRest()">休養する</button>
+        <button type="button" id="v3DailyShop" onclick="openShop()">補給する（ショップ）</button>
+        <button type="button" id="v3DailySmith" onclick="openSmith()">修理する（鍛冶屋）</button>
+        <button type="button" id="v3DailyNext" onclick="startQuest()">次の依頼へ</button>
+      </div>
+      <div class="s">費用・在庫・装備の詳細は既存ショップ／鍛冶画面で確認。ここでは購入・修理の自動実行をしない。</div>
+    </section>
+    <!-- V3_DAILY_MVP_END -->
   </div>
 
 
@@ -1615,6 +1628,7 @@ function townRest(){
 }
 function returnTown(){
   if(!S.quest||!S.away)return lg("出発前は帰還できない。");
+  const v3ReturnBefore=v3SnapshotForDaily();
   const completed=!!S.quest.done;
   const finishedQuest=completed?{...S.quest}:null;
   const rescued=!!S.heroRescuePending&&!completed;
@@ -1667,6 +1681,7 @@ function returnTown(){
   simAppendOffers(S);
   maybeSpawnDerivedQuest(S);
   maybeSpawnWarLiteOffers(S);
+  v3LastTownReturn={before:v3ReturnBefore,after:v3SnapshotForDaily(),completed};
   render();
 }
 
@@ -4379,8 +4394,40 @@ function renderLog(){
   el.textContent=S.logs.join("\n");
   el.scrollTop=el.scrollHeight;
 }
+/* V3 daily MVP: transient receipt only; never stored in Save. */
+let v3LastTownReturn=null;
+function v3SnapshotForDaily(){
+  return {day:S.day,gold:S.gold||0,food:S.res.food,water:S.res.water,
+    fatigue:S.res.fatigue,injury:S.res.injury,clears:S.clearCount||0};
+}
+function v3RenderDailyMvp(){
+  const root=document.getElementById('v3DailyMvp'),summary=document.getElementById('v3DailySummary');
+  if(!root||!summary)return;
+  const inTown=!S.away&&!S.battle;
+  root.hidden=!inTown;
+  if(!inTown)return;
+  const now=v3SnapshotForDaily();
+  const lines=[];
+  if(v3LastTownReturn){
+    const p=v3LastTownReturn;
+    lines.push('直近の帰還：'+(p.completed?'依頼達成':'撤退・救出等')+' ／ 経過 '+(p.after.day-p.before.day)+'日');
+    lines.push('帰還時変化：通貨 '+(p.after.gold-p.before.gold>=0?'+':'')+(p.after.gold-p.before.gold)
+      +' ／ 食料 '+(p.after.food-p.before.food)+' ／ 水 '+(p.after.water-p.before.water));
+  }else lines.push('帰還後はここで状態を確認して次の行動を選択。');
+  lines.push('現在：通貨 '+now.gold+' ／ 食料 '+now.food+' ／ 水 '+now.water
+    +' ／ 疲労 '+now.fatigue+' ／ 負傷 '+now.injury+' ／ Day '+now.day);
+  const needed=S.party.some(u=>u.hp<u.maxHp)||now.fatigue>0||now.injury>0||now.food<6||now.water<6;
+  const days=now.injury>20||now.fatigue>50?2:1;
+  lines.push(needed?'休養の見込み：'+days+'日、食料・水を最大 '+(2+days)+'ずつ消費後に補給（現行townRest準拠）。':'休養不要：既存の休養は状態を変更しません。');
+  lines.push('修理の必要：'+S.party.filter(u=>u.weapon&&u.weapon.durability<u.weapon.maxDurability).length+'人 ／ 次の依頼：'+(S.quest?'選択済み':'未選択'));
+  summary.textContent=lines.join('\n');
+  for(const [id,enabled] of [['v3DailyRest',needed],['v3DailyShop',true],['v3DailySmith',true],['v3DailyNext',!!S.quest]]){
+    const button=document.getElementById(id);if(button)button.disabled=!enabled;
+  }
+}
 function render(){
   syncTargets();
+  v3RenderDailyMvp();
   document.getElementById("world").textContent=S.world
     ?S.world.region+"（"+regionProfile(S.world.region).desc+"） / 拠点 "+S.world.town+" / "+S.world.dungeon+" Day "+S.day+" / 達成 "+(S.clearCount||0)+"件"+(regionRouteMods(S).label?" / "+regionRouteMods(S).label:"")
       +" / 依頼達成 累積 "+(S.clearCount||0)+"件"
