@@ -1362,7 +1362,25 @@ function newGame(){
 }
 function confirmNewGame(){
   if(typeof confirm==="function"&&!confirm("現在の進行と保存世界を破棄して新世界を生成しますか？"))return;
-  try{const prev=localStorage.getItem(SAVE_KEY);if(prev)localStorage.setItem(SAVE_KEY+".bak",prev);}catch(e){}
+  // V3 release QA fix: a corrupt current Save must never replace a healthy .bak.
+  // A failed quarantine (including full .failed slots or storage write error)
+  // blocks destructive New World until the player can protect the raw original.
+  let prev=null;
+  try{prev=localStorage.getItem(SAVE_KEY);}
+  catch(e){lg("現行Saveを確認できないため新世界生成を中止した。");return;}
+  if(prev){
+    let valid=false;
+    try{migrateSave(JSON.parse(prev));valid=true;}catch(e){}
+    if(valid){
+      try{localStorage.setItem(SAVE_KEY+".bak",prev);}
+      catch(e){lg("正常Saveのバックアップに失敗したため新世界生成を中止した。");return;}
+    }else{
+      if(!v3PreserveFailedBoot(prev)){
+        lg("破損Saveを安全退避できないため新世界生成を中止した。");return;
+      }
+      lg("破損した現行Saveは失敗退避に保護した。正常なバックアップは保持する。");
+    }
+  }
   newGame();
 }
 function makeQuestOffer(qType){
