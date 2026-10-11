@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>流浪冒険者TRPG V3.0 F2 MVP3.0-A Candidate</title>
+<title>流浪冒険者TRPG V4.0 RandomEvents Phase1 Grok Candidate</title>
 <style>
 :root{
   --bg:#0c0c0d;--surface:#141416;--surface2:#1c1c20;--fg:#ecece8;--muted:#8e8e87;
@@ -294,6 +294,19 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div id="campStatus" class="muted">拠点では野営できない。遠征中（非戦闘）に使用。</div>
   </div>
 
+  <div class="c" id="v4EventsCard">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2>V4 ランダムイベント (Phase1)</h2>
+      <div class="row">
+        <button type="button" id="btnV4Check" onclick="v4CheckAndDraw()">発生確認・抽選</button>
+        <button type="button" id="btnV4History" onclick="v4ShowHistory()">履歴</button>
+      </div>
+    </div>
+    <div id="v4EventStatus" class="muted">条件を満たすイベントだけ抽選。1日に1回・抽選と選択後に自動保存。</div>
+    <div id="v4EventActive" style="margin-top:8px;white-space:pre-wrap"></div>
+    <div id="v4EventActions" class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
   <div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>7区画戦場</h2>
@@ -530,6 +543,307 @@ const REGION_PROFILE={
   },
 };
 function regionProfile(region){return REGION_PROFILE[region]||REGION_PROFILE["灰風平原"];}
+
+/* ========== V4 Random Events Phase1 Engine (Grok Candidate 2026-10-11) ========== */
+const V4_EVENT_DEFS = [
+  {
+    eventId: "v4_b058_gate_retreat",
+    sourceIds: ["B058"],
+    family: "F01",
+    eventVersion: 1,
+    scope: ["exploration","away"],
+    title: "門前で戻る理由",
+    desc: "遠征先の入口付近で、警戒すべき痕跡や情報を得た。深入りせず撤収して情報を持ち帰ることもできる。",
+    weight: 12,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["exploration","field"], away: true, minDay: 1 },
+    actions: [
+      { id: "scout_retreat", label: "偵察して撤収（情報入手）", cost: { fatigue: 2 }, effects: { intel: 8, rumor: true, log: "入口付近を偵察し、痕跡と配置の情報を持ち帰った。深入りは避けた。" } },
+      { id: "push_in", label: "深入りする", cost: { fatigue: 4 }, effects: { fatigue: 3, danger: 1, log: "入口を越えて深入りした。警戒は高まった。" } },
+      { id: "ignore", label: "何もせず通過", cost: {}, effects: { log: "特に気にせず先へ進んだ。" } }
+    ]
+  },
+  {
+    eventId: "v4_a009_plant_block",
+    sourceIds: ["A009"],
+    family: "F02",
+    eventVersion: 1,
+    scope: ["travel","away","field"],
+    title: "道を奪う植物",
+    desc: "進路に繁茂した植物が道を塞いでいる。調査・除去・迂回・放置で地形や資源・時間が変わる。",
+    weight: 10,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["field","exploration"], away: true, regions: null },
+    actions: [
+      { id: "investigate", label: "調査する", cost: { fatigue: 2, food: 0 }, effects: { intel: 5, time: 0, log: "植物の種類と繁茂原因を調べた。通れる道の情報を得た。" } },
+      { id: "clear", label: "除去する", cost: { fatigue: 5, food: 1 }, effects: { materials: { herb: 1 }, fatigue: 3, log: "植物を切り開いて道を確保した。少し時間と体力を使った。" } },
+      { id: "detour", label: "迂回する", cost: { fatigue: 3, water: 1 }, effects: { time: 1, log: "植物を避けて遠回りした。到着が遅れた。" } },
+      { id: "leave", label: "放置して戻る", cost: {}, effects: { log: "道を塞ぐ植物を放置し、別の行動を選んだ。" } }
+    ]
+  },
+  {
+    eventId: "v4_a015_robbed_robber",
+    sourceIds: ["A015"],
+    family: "F03",
+    eventVersion: 1,
+    scope: ["away","field","exploration"],
+    title: "強盗に遭った強盗",
+    desc: "第三者が強盗に遭った形跡がある。調べる／関与する／不介入で世界・噂・評判が変わる。",
+    weight: 9,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "investigate", label: "現場を調べる", cost: { fatigue: 1 }, effects: { intel: 6, rumor: true, log: "痕跡から被害者と加害者の情報を得た。噂の種になった。" } },
+      { id: "intervene", label: "関与・追跡する", cost: { fatigue: 4, food: 1 }, effects: { reputation: 2, gold: 5, log: "関与して一部を回収した。評判が少し上がった。" } },
+      { id: "ignore", label: "不介入で離れる", cost: {}, effects: { rumor: true, log: "事件に介入せず離れた。噂だけが残った。" } }
+    ]
+  },
+  {
+    eventId: "v4_c201_fog_checkpoint",
+    sourceIds: ["C201"],
+    family: "F07",
+    eventVersion: 1,
+    scope: ["travel","away"],
+    title: "霧の中の検問所",
+    desc: "霧の中に臨時の検問所がある。地域法・通行権・貨物の条件で交渉・迂回・引返しの結果が変わる。既存関所評価と二重課金しない。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true, weatherHint: "濃霧" },
+    actions: [
+      { id: "negotiate", label: "交渉する", cost: { gold: 3 }, effects: { pass: true, log: "交渉して通行を認めてもらった。少額の通行料を払った（既存関所とは別枠）。" } },
+      { id: "detour", label: "迂回する", cost: { fatigue: 4, water: 1 }, effects: { time: 1, log: "検問を避けて霧の中を迂回した。" } },
+      { id: "turn_back", label: "引返す", cost: {}, effects: { log: "検問を見て引き返した。" } },
+      { id: "force", label: "強行突破を試みる", cost: { fatigue: 6 }, effects: { injury: 1, reputation: -2, log: "強行したが警戒され、軽い傷と悪評を負った。" } }
+    ]
+  },
+  {
+    eventId: "v4_b039_quiet_night",
+    sourceIds: ["B039"],
+    family: "F14",
+    eventVersion: 1,
+    scope: ["camp","away"],
+    title: "何も起きない夜",
+    desc: "適格イベントが無い、または平穏が選ばれた夜。強制イベントは発生せず、既存の時間・資源処理と矛盾しない。",
+    weight: 20,
+    cooldownDays: 1,
+    cap: 99,
+    eligibility: { phases: ["field","exploration"], away: true, nightOrCamp: true },
+    actions: [
+      { id: "rest", label: "静かに休む", cost: {}, effects: { fatigue: -2, log: "何事もなく夜が過ぎた。静かに休息できた。" } },
+      { id: "watch", label: "見張りを立てる", cost: { fatigue: 1 }, effects: { log: "見張りを立てたが、特に異変はなかった。" } }
+    ]
+  }
+];
+
+function v4EnsureState(){
+  if(!S) return;
+  if(!S.v4Events || typeof S.v4Events !== "object"){
+    S.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 };
+  }
+  if(!Array.isArray(S.v4Events.history)) S.v4Events.history = [];
+  if(!S.v4Events.cooldowns || typeof S.v4Events.cooldowns !== "object") S.v4Events.cooldowns = {};
+  if(!S.v4Events.resolvedTokens || typeof S.v4Events.resolvedTokens !== "object") S.v4Events.resolvedTokens = {};
+  if(!S.v4Events.counts || typeof S.v4Events.counts !== "object") {
+    S.v4Events.counts = {};
+    for(const h of S.v4Events.history) if(h && h.eventId) S.v4Events.counts[h.eventId] = (S.v4Events.counts[h.eventId]||0)+1;
+  }
+  if(!Number.isSafeInteger(S.v4Events.drawSerial) || S.v4Events.drawSerial<0) S.v4Events.drawSerial=0;
+  if(S.v4Events.history.length > 80) S.v4Events.history = S.v4Events.history.slice(-80);
+}
+
+function v4IsEligible(def){
+  if(!S || !def || S.battle) return false;
+  const el=def.eligibility||{}, v4=S.v4Events;
+  if(!v4) return false;
+  if(el.away === true && !S.away) return false;
+  if(el.away === false && S.away) return false;
+  if(Array.isArray(el.phases) && !el.phases.includes(S.phase||(S.away?'field':'town'))) return false;
+  if(el.minDay!=null && (S.day||1)<el.minDay) return false;
+  // This deliberately makes fog a boost, not an exclusive climate gate (Phase1).
+  if(Array.isArray(el.regions) && !el.regions.includes(activeRegion(S))) return false;
+  const cd=v4.cooldowns[def.eventId];
+  if(Number.isFinite(cd) && (S.day||1)<cd) return false;
+  if(def.cap!=null && (v4.counts?.[def.eventId]||0)>=def.cap) return false;
+  if(v4.active) return false;
+  return true;
+}
+
+function v4GetEligible(){
+  v4EnsureState();
+  return V4_EVENT_DEFS.filter(v4IsEligible);
+}
+
+function v4WeightedDraw(eligible){
+  if(!eligible || !eligible.length) return null;
+  let total = 0;
+  const weights = eligible.map(e=>{
+    let w = e.weight || 1;
+    if(e.eligibility && e.eligibility.weatherHint && S.res && S.res.weather === e.eligibility.weatherHint) w *= 1.5;
+    total += w;
+    return w;
+  });
+  let r = Math.random() * total;
+  for(let i=0;i<eligible.length;i++){
+    r -= weights[i];
+    if(r <= 0) return eligible[i];
+  }
+  return eligible[eligible.length-1];
+}
+
+function v4CheckAndDraw(){
+  if(!S) return;
+  v4EnsureState();
+  if(S.battle){ lg('【V4】戦闘中は新規イベントを引けない。'); return; }
+  if(S.v4Events.active){ lg('【V4】未解決のイベントがあります。先に選択してください。'); v4RenderActive(); return; }
+  if(S.v4Events.lastDrawDay===S.day){ lg('【V4】この日の抽選は既に完了。世界の日付が進めば再確認できます。'); return; }
+  const eligible=v4GetEligible();
+  // Even if no definition is eligible, record the day once; do not allow repeat-draw exploit.
+  S.v4Events.lastDrawDay=S.day||1;
+  if(eligible.length===0){
+    lg('【V4】適格イベントなし。平穏な時間です。');
+    save();
+    v4RenderActive();return;
+  }
+  const drawn=v4WeightedDraw(eligible);
+  if(!drawn){lg('【V4】平穏な時間です。');save();return;}
+  const token='v4_'+(S.day||1)+'_'+(++S.v4Events.drawSerial)+'_'+drawn.eventId;
+  S.v4Events.active={eventId:drawn.eventId,token,title:drawn.title,desc:drawn.desc,
+    actions:drawn.actions.map(a=>({id:a.id,label:a.label})),day:S.day||1,resolved:false};
+  lg('【V4イベント発生】'+drawn.title+' — '+drawn.desc);
+  save();
+  render();
+}
+
+function v4RenderActive(){
+  const st=document.getElementById('v4EventStatus'),act=document.getElementById('v4EventActive'),acts=document.getElementById('v4EventActions');
+  if(!st||!act||!acts||!S||!S.v4Events)return;
+  const a=S.v4Events.active;
+  if(!a || a.resolved){
+    st.textContent='待機中。1日に1回だけ抽選。発生時・選択後は自動保存（保存失敗時はログに表示）。';
+    act.textContent=''; acts.replaceChildren(); return;
+  }
+  st.textContent='未解決イベント（自動保存済み・選択待ち） Day '+a.day;
+  act.textContent='【'+a.title+'】\n'+a.desc;
+  acts.replaceChildren();
+  const def=V4_EVENT_DEFS.find(d=>d.eventId===a.eventId);
+  for(const ch of a.actions||[]){
+    const entry=def?.actions?.find(x=>x.id===ch.id);
+    if(!entry)continue;
+    const btn=document.createElement('button');btn.type='button';btn.textContent=ch.label;
+    const missing=v4CostMissing(entry.cost||{});
+    if(missing){btn.disabled=true;btn.title=missing;btn.textContent+='（'+missing+'）';}
+    btn.onclick=()=>v4ResolveChoice(ch.id);
+    acts.appendChild(btn);
+  }
+}
+
+function v4CostMissing(cost){
+  const res=S?.res||{};
+  if((cost.gold||0)>(Number(S?.gold)||0))return '通貨不足';
+  if((cost.food||0)>(Number(res.food)||0))return '食料不足';
+  if((cost.water||0)>(Number(res.water)||0))return '水不足';
+  return '';
+}
+function v4WorldTimePass(days){
+  days=Math.max(0,Math.min(3,Math.floor(Number(days)||0)));
+  for(let i=0;i<days;i++){
+    S.day++;
+    if(S.sim)simAdvance(S,S.day);
+    nationTick(S,1); // existing canonical calendar: no extra v17/v19 tick
+    if(typeof updateRivals==='function')updateRivals(S);
+  }
+}
+function v4ApplyRouteEffect(delta){
+  const region=activeRegion(S),ref=S.sim?.refs?.[region];
+  const node=ref && S.sim?.nodes?.[ref.region];
+  if(!node?.baseState || !Number.isFinite(delta))return false;
+  node.baseState.passability=cl((node.baseState.passability||65)+delta,5,100);
+  simRefreshNode(S.sim,node);
+  return true;
+}
+function v4IsResolutionContextValid(def){
+  const el=def?.eligibility||{};
+  if(el.away===true && !S.away)return false;
+  if(el.away===false && S.away)return false;
+  return true;
+}
+function v4ResolveChoice(actionId){
+  if(!S)return;
+  v4EnsureState();
+  const active=S.v4Events.active;
+  if(!active || active.resolved){lg('【V4】解決対象がありません。');return;}
+  if(S.v4Events.resolvedTokens[active.token]){
+    S.v4Events.active=null;v4RenderActive();return;
+  }
+  if(S.battle){lg('【V4】戦闘中にイベントは解決できません。');return;}
+  const def=V4_EVENT_DEFS.find(d=>d.eventId===active.eventId);
+  const action=def?.actions?.find(a=>a.id===actionId);
+  if(!def||!action){lg('【V4】定義・選択肢が見つかりません。');return;}
+  // A stale action cannot be confirmed after the player has changed scene.
+  if(!v4IsResolutionContextValid(def)){
+    lg('【V4】この場面ではイベントを解決できません。遠征状態を確認してください。');return;
+  }
+  const missing=v4CostMissing(action.cost||{});
+  if(missing){lg('【V4】'+missing+'：選択は未確定です。');v4RenderActive();return;}
+  const cost=action.cost||{},eff=action.effects||{};
+  if(cost.gold)S.gold-=cost.gold;
+  if(cost.food)S.res.food-=cost.food;
+  if(cost.water)S.res.water-=cost.water;
+  if(cost.fatigue)S.res.fatigue=cl((S.res.fatigue||0)+cost.fatigue,0,100);
+  if(eff.fatigue)S.res.fatigue=cl((S.res.fatigue||0)+eff.fatigue,0,100);
+  if(eff.injury)S.res.injury=cl((S.res.injury||0)+eff.injury,0,100);
+  if(eff.gold)S.gold=(S.gold||0)+eff.gold;
+  if(eff.materials && S.materials)for(const [k,v] of Object.entries(eff.materials))if(k in S.materials)S.materials[k]=(S.materials[k]||0)+v;
+  const region=activeRegion(S),ri=ensureRegionIntel(S,region);
+  if(eff.intel){ri.knowledge=cl((ri.knowledge||0)+eff.intel,0,100);ri.discoveryLevel=cl((ri.discoveryLevel||0)+Math.floor(eff.intel/2),0,100);}
+  if(eff.reputation)ri.reputation=cl((ri.reputation||0)+eff.reputation,-50,50);
+  // World-dependent event details, not merely descriptive text.
+  if(def.eventId==='v4_a009_plant_block'&&action.id==='clear')v4ApplyRouteEffect(5);
+  if(def.eventId==='v4_a009_plant_block'&&action.id==='leave')v4ApplyRouteEffect(-3);
+  if(eff.danger && S.exploration)S.exploration.danger=cl((S.exploration.danger||1)+eff.danger,1,100);
+  if(eff.rumor){
+    if(!Array.isArray(S.rumors))S.rumors=[];
+    S.rumors.push({id:'v4r_'+active.token,subject:active.title,regionId:region,source:'V4Event',kind:'exaggerated',confidence:0.6,heardDay:S.day||1,expiresDay:(S.day||1)+20,text:String(eff.log||active.title).slice(0,160)});
+    if(S.rumors.length>60)S.rumors=S.rumors.slice(-60);
+  }
+  if(eff.log)lg('【V4結果】'+eff.log);else lg('【V4結果】'+action.label+' を選択した。');
+  // Commit the receipt before triggering a world tick/return to prevent re-entrance.
+  S.v4Events.resolvedTokens[active.token]={day:S.day,actionId};
+  S.v4Events.counts[def.eventId]=(S.v4Events.counts[def.eventId]||0)+1;
+  S.v4Events.history.push({eventId:active.eventId,sourceIds:def.sourceIds,family:def.family,day:S.day,actionId,
+    title:active.title,summary:String(eff.log||action.label).slice(0,120),token:active.token});
+  if(S.v4Events.history.length>80)S.v4Events.history.splice(0,S.v4Events.history.length-80);
+  // Receipts are also present in history. Retain a bounded recent set for Save size.
+  const tokens=Object.keys(S.v4Events.resolvedTokens);
+  for(const key of tokens.slice(0,Math.max(0,tokens.length-120)))delete S.v4Events.resolvedTokens[key];
+  S.v4Events.cooldowns[def.eventId]=S.day+(def.cooldownDays||3);
+  S.v4Events.active=null;
+  if(eff.time)v4WorldTimePass(eff.time);
+  const shouldRetreat=(def.eventId==='v4_b058_gate_retreat'&&actionId==='scout_retreat')||
+    (def.eventId==='v4_c201_fog_checkpoint'&&actionId==='turn_back');
+  if(shouldRetreat && S.away && !S.battle && typeof returnTown==='function'){ returnTown(); save(); return; }
+  save(); render();
+}
+
+function v4ShowHistory(){
+  v4EnsureState();
+  const h = S.v4Events.history || [];
+  if(!h.length){ lg("【V4履歴】まだありません。"); return; }
+  lg("【V4履歴】直近" + Math.min(10,h.length) + "件:");
+  h.slice(-10).forEach(x=> lg("  Day"+x.day+" ["+x.family+"] "+x.title+" → "+(x.summary||x.actionId)));
+}
+
+function v4OnRenderHook(){
+  // Display-only: never initialize state or draw RNG while rendering.
+  if(!S || !S.v4Events)return;
+  v4RenderActive();
+}
+/* ========== End V4 Engine ========== */
+
 const FORMATIONS={
   "渡し場迎撃隊":["葦盾傭兵","渡し場弓盗","渡し場弓盗","河岸斥候"],
   "葦原追撃隊":["湿地猟犬","湿地猟犬","河岸斥候","渡し場弓盗"],
@@ -827,7 +1141,9 @@ function emptyState(){
     v17BoardOffer:null,     // offered, not accepted; no advance paid
     v17BoardOfferLastKey:null,
     v17LastCloseTickDay:1,
-    v17RumorOverflow:{} // region -> {count,lastArriveDay}; only summarized after arrival and visit
+    v17RumorOverflow:{}, // region -> {count,lastArriveDay}; only summarized after arrival and visit
+    // V4 Random Events Phase1 (namespaced, additive only)
+    v4Events: { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 }
   };
 }
 
@@ -4433,6 +4749,21 @@ function migrateSave(input){
     next.v17MigrationWarning=String(e.message||e).slice(0,140);
   }
   v19Ensure(next); // v10 and earlier start V1.9 history at their loaded day (no retroactive retirements)
+  // V4 Random Events Phase1: additive namespace, safe init for old saves
+  if(!next.v4Events || typeof next.v4Events !== "object"){
+    next.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 };
+  } else {
+    if(!Array.isArray(next.v4Events.history)) next.v4Events.history = [];
+    if(!next.v4Events.cooldowns || typeof next.v4Events.cooldowns !== "object") next.v4Events.cooldowns = {};
+    if(!next.v4Events.resolvedTokens || typeof next.v4Events.resolvedTokens !== "object") next.v4Events.resolvedTokens = {};
+    if(!next.v4Events.counts || typeof next.v4Events.counts !== "object") {
+      next.v4Events.counts = {};
+      for(const h of next.v4Events.history) if(h && h.eventId) next.v4Events.counts[h.eventId] = (next.v4Events.counts[h.eventId]||0)+1;
+    }
+    if(!Number.isSafeInteger(next.v4Events.drawSerial) || next.v4Events.drawSerial<0) next.v4Events.drawSerial=0;
+    if(next.v4Events.history.length > 80) next.v4Events.history = next.v4Events.history.slice(-80);
+    next.v4Events.version = 1;
+  }
   return next;
 }
 function saveCandidateList(){
@@ -4758,6 +5089,7 @@ function render(){
   simRender();
   v18RenderExpeditionAdvisor(); // V18 read-only render hook
   v19RenderPhase0(); // V1.9 Phase0 only
+  try{ v4OnRenderHook(); }catch(e){} // V4 Phase1 UI refresh (display only)
 }
 
 /* V18_ADVISOR_BEGIN — R5 read-only UI; no ensure*, RNG, game action or Save writes. */
