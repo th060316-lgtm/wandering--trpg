@@ -1264,6 +1264,7 @@ function travel(){
 
 
 function newGame(){
+  v3LastTownReturn=null;
   S=emptyState();
   S.world={
     region:pick(["灰風平原","碧森辺境","赤土丘陵","セラ川下流湿地","ベルク北峠旧軍道","東部採石路","風車牧野","南湖干潟","街道宿場跡"]),
@@ -4334,6 +4335,7 @@ function preserveFailedCurrent(records){
   }catch(e){console.error('[save quarantine failed]',e);}
 }
 function useSaveCandidate(item){
+  v3LastTownReturn=null;
   const before=S,oldWeaponSeq=weaponSeq;
   try{
     S=item.migrated;
