@@ -147,6 +147,11 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 #battleLogCard .log{height:200px;white-space:pre-wrap;overflow-wrap:anywhere}
 #partyBattleNote[hidden]{display:none}
 @media(max-width:480px){#battlePartyHost #party{grid-template-columns:minmax(0,1fr)}#battleTurnSummary{font-size:12px}}
+/* V5 vertical slice: known local contacts and observed encounter history; presentation only. */
+.v5-contact{background:var(--surface2);border:1px solid #476355;border-radius:10px;padding:11px;margin:9px 0;min-width:0}
+.v5-contact-title{font-size:12px;color:#b4d7bf;font-weight:700;margin-bottom:6px}
+.v5-contact-person{font-size:14px;line-height:1.6;margin:0 0 6px;overflow-wrap:anywhere}
+.v5-contact-history{font-size:12px;color:var(--muted);line-height:1.6;margin:0;overflow-wrap:anywhere}
 /* PERSONA_P0_20261012: context-aware views, event spotlight and departure notice */
 [hidden]{display:none!important}
 .ux-depart-alert{border:1px solid #88633b;background:#32261d;color:#f1d7a9;padding:11px;border-radius:9px;white-space:pre-wrap;line-height:1.65;margin:9px 0}
@@ -347,6 +352,11 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <p id="uxFieldStatus" class="ux-story"></p>
     <label>今日活動する場所 <select id="uxFieldSite" onchange="uxChooseFieldSite(this.value)" style="width:100%"></select></label>
     <p id="uxSiteInfo" class="ux-hint">活動を実行すると現地で1日経過します。</p>
+    <div class="v5-contact" id="v5ContactCard" aria-label="土地の人と再会の記録">
+      <div class="v5-contact-title">この土地で出会う人</div>
+      <p id="v5ContactPerson" class="v5-contact-person"></p>
+      <p id="v5ContactHistory" class="v5-contact-history" aria-live="polite"></p>
+    </div>
     <div id="uxLocalTalkNote" class="ux-hint" aria-live="polite"></div>
     <div class="ux-choice">
       <button type="button" onclick="uxFieldSurvey()">現地を調査する</button>
@@ -6803,7 +6813,7 @@ function render(){
   try{ v4OnBattleRenderHook(); }catch(e){console.warn('V4 negotiation render',e);} // V4 negotiation UI refresh
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
-  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
+  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -8614,6 +8624,30 @@ function uxAddJourneyNote(note){
     S.uxJourney.notes.push(note);S.uxJourney.notes=S.uxJourney.notes.slice(-30);
   }
 }
+/* V5 contact slice: the region contact already exists in V4.
+   Never fabricate conversations, alter world state, consume RNG, or create Save fields. */
+function v5RenderContact(){
+  const card=document.getElementById('v5ContactCard');
+  if(!card)return;
+  if(!S||!S.away){card.hidden=true;return;}
+  card.hidden=false;
+  const region=activeRegion(S);
+  const person=uxLocalContact(region);
+  const node=document.getElementById('v5ContactPerson');
+  const history=document.getElementById('v5ContactHistory');
+  if(node)node.textContent=person.name+'（'+person.role+'） — '+person.motive;
+  if(!history)return;
+  const talks=Array.isArray(S.uxLocalTalkHistory)
+    ? S.uxLocalTalkHistory.filter(h=>h&&h.region===region&&Number.isFinite(Number(h.day))&&Number(h.day)<=Number(S.day))
+    : [];
+  const last=talks[talks.length-1];
+  if(!last){history.textContent='まだ話を聞いていない。下の「地元の人に話を聞く」で、この土地で得られる情報を確かめられる。';return;}
+  const day=Number(last.day);
+  const again=talks.length>1?'再訪して話を聞いた記録がある。':'以前話を聞いた記録がある。';
+  history.textContent=again+' 記録 '+talks.length+'回／最後はDay '+day+
+    (last.site?'・'+String(last.site):'')+'。記録は実際に聞いた会話だけを数える。'+
+    (S.uxFieldTalkDay===S.day?' 今日は相談済み。翌日なら改めて話を聞ける。':' 今日は新しい話を聞ける。');
+}
 function uxRenderJourney(){
   if(!S)return;
   const quickDest=document.getElementById('uxJourneyDestQuick');
@@ -8684,10 +8718,12 @@ function uxRenderJourney(){
   if(txt&&S.uxLastJourney){const j=S.uxLastJourney,b=j.depart,a=j.arrival;
     const names={gold:'通貨',food:'食料',water:'水',fatigue:'疲労',injury:'負傷'};const diff=(key,unit='')=>{const delta=(a[key]||0)-(b[key]||0);return names[key]+'：'+b[key]+'→'+a[key]+' ('+(delta>=0?'+':'')+delta+unit+')';};
     let world=['safety','logistics','passability'].map(k=>b.local?.[k]!=null&&a.local?.[k]!=null?({safety:'治安',logistics:'物流',passability:'通行状況'}[k])+' '+b.local[k]+'→'+a.local[k]:null).filter(Boolean).join('／');
+    const witnessed=(S.uxLocalTalkHistory||[]).filter(h=>h&&h.region===j.region&&Number(h.day)>=Number(j.departDay)&&Number(h.day)<=Number(j.returnDay));
+    const met=witnessed.length?'\nこの旅で話を聞いた人：'+uxLocalContact(j.region).name+'（'+witnessed.length+'回）':'\nこの旅での住人との会話記録：なし';
     txt.textContent=j.region+'を'+(j.mode==='free'?'自由に旅した':'依頼で訪ねた')+'。Day '+j.departDay+'→'+j.returnDay+'、結果：'+j.outcome+'。\n'+
       [diff('gold','通貨'),diff('food'),diff('water'),diff('fatigue')].join(' ／ ')+
       '\n地域状態（出発・帰還の観測値）：'+(world||'比較不能')+'。他の出来事や時間経過も影響するため、すべてが自身の功績とは限りません。'+
-      '\n旅の記録：'+(j.notes?.length?j.notes.join('／'):'特記事項なし');
+      met+'\n旅の記録：'+(j.notes?.length?j.notes.join('／'):'特記事項なし');
   }
 }
 function uxRenderContextUI(){
