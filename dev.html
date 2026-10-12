@@ -534,6 +534,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div id="nationPanel" class="g" style="margin-top:8px"></div>
   </div>
 
+  <div class="c" id="v4AutonomyCard"><h2>訪問した地域の商隊・街道情勢</h2><div id="v4AutonomyStatus" class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
   <details class="c" id="simPanel">
     <summary>世界の詳しい記録と検証機能（開発用）</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
@@ -1334,6 +1335,84 @@ const V4_EVENT_DEFS = [
   }
 ];
 
+
+/* V4 Phase3 slice: independent commerce/raid outcomes, persistent and bounded. */
+function v4EnsureAutonomy(state){
+  if(!state || !state.v4Events || typeof state.v4Events!=='object')return null;
+  const ev=state.v4Events;
+  if(!ev.autonomy || typeof ev.autonomy!=='object' || Array.isArray(ev.autonomy)){
+    const last=Number(state.nationWorldLastTickDay);
+    ev.autonomy={lastTickDay:Number.isSafeInteger(last)?Math.max(1,last):Math.max(1,Math.floor(Number(state.day)||1)),
+      regions:{},history:[]};
+  }
+  const a=ev.autonomy;
+  if(!a.regions || typeof a.regions!=='object' || Array.isArray(a.regions))a.regions={};
+  if(!Array.isArray(a.history))a.history=[];
+  if(a.history.length>50)a.history=a.history.slice(-50);
+  if(!Number.isSafeInteger(a.lastTickDay)||a.lastTickDay<1)a.lastTickDay=Math.max(1,Math.floor(Number(state.nationWorldLastTickDay)||1));
+  return a;
+}
+function v4AutonomyTick(state,day){
+  const a=v4EnsureAutonomy(state);
+  if(!a || !Number.isSafeInteger(day) || day<=a.lastTickDay)return false;
+  // Bounded discrete world activity: once each five days; no player presence or click required.
+  // Skipped days still advance the idempotency watermark.
+  a.lastTickDay=day;
+  if(day%5!==0)return false;
+  const regions=Object.keys(REGION_PROFILE);
+  const region=regions[(Math.floor(day/5)-1)%regions.length];
+  const polity=state.nationLite?.[polityOfRegion(region)];
+  const road=state.infraLite?.assets?.['road_'+region];
+  const band=state.logisticsBands?.[region]||'normal';
+  const guard=8 + (Number(polity?.military)||45)*.4 + Math.max(0,Number(road?.capacityBand)||1)*7 +
+    (Number(polity?.food)||50)*.08 + Math.random()*30;
+  const raider=12 + (100-(Number(polity?.order)||50))*.42 + (band==='low'?13:0) + Math.random()*35;
+  const secured=guard>=raider;
+  const rec=a.regions[region]&&typeof a.regions[region]==='object'?a.regions[region]:{marketStress:0,deliveries:0,losses:0};
+  const before=Math.max(-18,Math.min(18,Number(rec.marketStress)||0));
+  const after=Math.max(-18,Math.min(18,before+(secured?-4:6)));
+  rec.marketStress=after;
+  rec.deliveries=Math.max(0,Number(rec.deliveries)||0)+(secured?1:0);
+  rec.losses=Math.max(0,Number(rec.losses)||0)+(secured?0:1);
+  rec.lastDay=day;
+  a.regions[region]=rec;
+  // The outcome is not a cosmetic message: market quotes consume marketStress,
+  // and an actual route node receives a small bounded change.
+  const ref=state.sim?.refs?.[region];
+  const node=ref&&state.sim?.nodes?.[ref.region];
+  if(node?.baseState && typeof simRefreshNode==='function'){
+    node.baseState.passability=cl((Number(node.baseState.passability)||65)+(secured?1:-2),5,100);
+    simRefreshNode(state.sim,node);
+  }
+  const text=secured?'商隊が護送され、交易品が届いた。':'街道の商隊が襲われ、運送品の一部が失われた。';
+  const incident={id:'v4_auto_'+day+'_'+region,day,region,kind:secured?'delivery':'raid',
+    text,marketStress:after,escort:Math.round(guard),raiders:Math.round(raider)};
+  a.history.push(incident);
+  if(a.history.length>50)a.history.splice(0,a.history.length-50);
+  // Local information; remote events remain unknown until travel/contact.
+  if(!Array.isArray(state.rumors))state.rumors=[];
+  if(region===state.world?.region || (state.away && state.travelDest===region)){
+    state.rumors.push({id:incident.id,subject:'商隊と街道',regionId:region,source:'V4Autonomous',
+      kind:'observed',confidence:0.8,heardDay:day,expiresDay:day+25,text});
+    if(state.rumors.length>80)state.rumors.splice(0,state.rumors.length-80);
+  }
+  return true;
+}
+function v4AutonomyMarketFactor(state,region){
+  const stress=Number(state?.v4Events?.autonomy?.regions?.[region]?.marketStress)||0;
+  return 1+Math.max(-18,Math.min(18,stress))*.01;
+}
+function v4RenderAutonomous(){
+  const node=document.getElementById('v4AutonomyStatus');
+  if(!node||!S)return;
+  const a=S.v4Events?.autonomy;
+  if(!a||!Array.isArray(a.history)){node.textContent='世界の自律的な交易・街道事件は日付経過で記録されます。';return;}
+  const known=e=>e.region===S.world?.region||S.regionIntel?.[e.region]?.visited===true;
+  const list=a.history.filter(known).slice(-8);
+  node.textContent=list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\n'):
+    '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。';
+}
+
 function v4EnsureState(){
   if(!S) return;
   if(!S.v4Events || typeof S.v4Events !== "object"){
@@ -1349,6 +1428,7 @@ function v4EnsureState(){
   if(!Number.isSafeInteger(S.v4Events.drawSerial) || S.v4Events.drawSerial<0) S.v4Events.drawSerial=0;
   if(S.v4Events.history.length > 80) S.v4Events.history = S.v4Events.history.slice(-80);
   if(!Number.isSafeInteger(S.v4Events.version)||S.v4Events.version<2) S.v4Events.version = 2;
+  v4EnsureAutonomy(S);
 }
 
 function v4IsEligible(def){
@@ -1361,6 +1441,8 @@ function v4IsEligible(def){
   if(el.minDay!=null && (S.day||1)<el.minDay) return false;
   if(el.nightOrCamp===true && S.uxNightEventReadyDay!==S.day)return false;
   if(Array.isArray(el.regions) && !el.regions.includes(activeRegion(S))) return false;
+  if(def.eventId==='v4_b079_rain_skill'&&!/雨/.test(String(S.res?.weather||'')))return false;
+  if(def.eventId==='v4_a017_plague_ferry'&&activeRegion(S)!=='セラ川下流湿地')return false;
   const cd=v4.cooldowns[def.eventId];
   if(Number.isFinite(cd) && (S.day||1)<cd) return false;
   if(def.cap!=null && (v4.counts?.[def.eventId]||0)>=def.cap) return false;
@@ -1435,7 +1517,8 @@ function v4EventImpact(def,entry){
   if(effects.rumor)parts.push('噂が発生');
   if(effects.danger)parts.push('危険度が変化');
   const leave=(def?.eventId==='v4_b058_gate_retreat'&&entry.id==='scout_retreat')||
-    (def?.eventId==='v4_c201_fog_checkpoint'&&entry.id==='turn_back');
+    (def?.eventId==='v4_c201_fog_checkpoint'&&entry.id==='turn_back')||
+    (def?.eventId==='v4_b032_can_return_but'&&entry.id==='return_now');
   if(leave){parts.push('選択すると自動で拠点へ帰還');if(S.uxFieldJob?.status==='active')parts.push('現地仕事は未納品のまま残り、期限を過ぎると失効');}
   if(!parts.length)parts.push('明示された資源支出なし（未知の影響は保証できません）');
   if(effects.injury||effects.reputation<0||effects.danger>1)parts.push('⚠既知リスクあり');
@@ -1539,7 +1622,8 @@ function v4ResolveChoice(actionId){
   S.v4Events.active=null;
   if(eff.time)v4WorldTimePass(eff.time);
   const shouldRetreat=(def.eventId==='v4_b058_gate_retreat'&&actionId==='scout_retreat')||
-    (def.eventId==='v4_c201_fog_checkpoint'&&actionId==='turn_back');
+    (def.eventId==='v4_c201_fog_checkpoint'&&actionId==='turn_back')||
+    (def.eventId==='v4_b032_can_return_but'&&actionId==='return_now');
   if(shouldRetreat && S.away && !S.battle && typeof returnTown==='function'){ returnTown(); save(); return; }
   save(); render();
 }
@@ -1555,6 +1639,7 @@ function v4ShowHistory(){
 function v4OnRenderHook(){
   if(!S || !S.v4Events)return;
   v4RenderActive();
+  v4RenderAutonomous();
 }
 /* ========== End V4 Engine ========== */
 
@@ -1861,7 +1946,7 @@ function emptyState(){
     v17LastCloseTickDay:1,
     v17RumorOverflow:{}, // region -> {count,lastArriveDay}; only summarized after arrival and visit
     // V4 Random Events Phase1 (namespaced, additive only)
-    v4Events: { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 }
+    v4Events: { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 2 }
   };
 }
 
@@ -4627,6 +4712,7 @@ function nationTickCore(state,days){
     }
     // 物流帯: 街道・橋・国家食料から
     refreshLogisticsBands(state);
+    v4AutonomyTick(state,day);
   }
   state.nationWorldLastTickDay=now;
   disasterTick(state);
@@ -5166,6 +5252,7 @@ function marketPriceFactorWithLogistics(state){
   const market=state.infraLite?.assets?.market_post;
   if(market?.region===state.world?.region&&market.status!=="ok")f*=1.10;
   try{f*=v18FestivalPriceMul(state);}catch(e){}
+  f*=v4AutonomyMarketFactor(state,state.world?.region);
   return Math.max(0.7,Math.min(2.4,f));
 }
 
@@ -5468,7 +5555,7 @@ function migrateSave(input){
   v19Ensure(next); // v10 and earlier start V1.9 history at their loaded day (no retroactive retirements)
   // V4 Random Events Phase1: additive namespace, safe init for old saves
   if(!next.v4Events || typeof next.v4Events !== "object"){
-    next.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 };
+    next.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 2 };
   } else {
     if(!Array.isArray(next.v4Events.history)) next.v4Events.history = [];
     if(!next.v4Events.cooldowns || typeof next.v4Events.cooldowns !== "object") next.v4Events.cooldowns = {};
@@ -5479,7 +5566,7 @@ function migrateSave(input){
     }
     if(!Number.isSafeInteger(next.v4Events.drawSerial) || next.v4Events.drawSerial<0) next.v4Events.drawSerial=0;
     if(next.v4Events.history.length > 80) next.v4Events.history = next.v4Events.history.slice(-80);
-    next.v4Events.version = 1;
+    next.v4Events.version = Math.max(2,Math.floor(Number(next.v4Events.version)||0));
   }
   // UX persistence: lost weapons may not magically reappear via legacy loadout migration.
   next.uxLossCount=Math.max(0,Math.min(100000,Math.floor(Number(next.uxLossCount)||0)));
@@ -7301,7 +7388,8 @@ function uxTravelDays(planKey,destination,home){
 function uxCommodityMultiplier(region){
   // Simulation uses the canonical world ledger; this is a local market QUOTE, not an instant world mutation.
   const band=S?.logisticsBands?.[region];
-  return band==='low'?1.55:band==='high'?.85:1;
+  const base=band==='low'?1.55:band==='high'?.85:1;
+  return base*v4AutonomyMarketFactor(S,region);
 }
 function uxLodgingPrice(region){return Math.max(2,Math.ceil(3*uxCommodityMultiplier(region)));}
 function uxMaterialSalePrice(kind,region){
@@ -7498,7 +7586,9 @@ function uxAskLocal(){
   if(!uxFieldEligible())return;
   if(S.uxFieldTalkDay===S.day)return lg('今日は既に地元の人から話を聞きました。翌日また訪ねてください。');
   const region=activeRegion(S),ri=S.regionIntel?.[region]||{},rumors=(S.rumors||[]).filter(r=>r?.regionId===region&&(!r.expiresDay||r.expiresDay>=S.day));
-  const info=rumors.length?'この土地では「'+rumors[rumors.length-1].text+'」という話がある。ただし噂にすぎない。':
+  const latestAutonomy=(S.v4Events?.autonomy?.history||[]).filter(e=>e.region===region&&S.day-e.day<=25).slice(-1)[0];
+  const info=latestAutonomy?'この地域ではDay'+latestAutonomy.day+'に「'+latestAutonomy.text+'」との報せがあった。詳細は現地でもまだ確認が必要だ。':
+    rumors.length?'この土地では「'+rumors[rumors.length-1].text+'」という話がある。ただし噂にすぎない。':
     (ri.knownRoutes?.length?'最近は'+ri.knownRoutes.slice(-2).join('、')+'の話をよく聞く。':
       (()=>{const wr=uxRegionRecord(region);
         if(wr.safety!=null&&wr.safety<45)return 'この辺は人の行き来に不安がある。知らない道を急ぐのは勧めない。';
