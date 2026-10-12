@@ -456,6 +456,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <p class="ux-hint" id="uxBattleForecast">敵の射程や味方の位置を見て判断してください。</p>
     <div id="battlePartyHost"></div>
     <button type="button" class="primary" id="resolve" style="width:100%;margin-top:10px" onclick="resolveTurn()">選択した行動で1ターン実行</button>
+    <button type="button" id="btnV4BattleNeg" style="width:100%;margin-top:6px" hidden onclick="v4OfferBattleNegotiation()">交渉を試みる（F04・費用とリスクあり）</button>
+    <div id="v4BattleNegBox" hidden style="margin-top:8px"></div>
   </section>
   <section class="c" id="battleTurnSummary" role="status" aria-live="polite" hidden></section>
   <section class="c" id="battleLogCard" aria-label="冒険と戦闘のログ">
@@ -1343,74 +1345,412 @@ function v4EnsureAutonomy(state){
   if(!ev.autonomy || typeof ev.autonomy!=='object' || Array.isArray(ev.autonomy)){
     const last=Number(state.nationWorldLastTickDay);
     ev.autonomy={lastTickDay:Number.isSafeInteger(last)?Math.max(1,last):Math.max(1,Math.floor(Number(state.day)||1)),
-      regions:{},history:[]};
+      regions:{},history:[],agents:[],postwar:[]};
   }
   const a=ev.autonomy;
   if(!a.regions || typeof a.regions!=='object' || Array.isArray(a.regions))a.regions={};
   if(!Array.isArray(a.history))a.history=[];
   if(a.history.length>50)a.history=a.history.slice(-50);
+  if(!Array.isArray(a.agents))a.agents=[];
+  if(!Array.isArray(a.postwar))a.postwar=[];
+  if(a.postwar.length>40)a.postwar=a.postwar.slice(-40);
   if(!Number.isSafeInteger(a.lastTickDay)||a.lastTickDay<1)a.lastTickDay=Math.max(1,Math.floor(Number(state.nationWorldLastTickDay)||1));
+  // Seed persistent agents once (max ~27: 3 roles x 9 regions)
+  if(a.agents.length===0){
+    const regions=Object.keys(REGION_PROFILE||{});
+    const roles=[
+      {role:'merchant',goal:'trade',baseGold:40,baseGoods:8,force:6,morale:50},
+      {role:'raider',goal:'raid',baseGold:15,baseGoods:2,force:18,morale:55},
+      {role:'guard',goal:'escort',baseGold:20,baseGoods:3,force:14,morale:60}
+    ];
+    let i=0;
+    for(const reg of regions){
+      for(const r of roles){
+        i++;
+        a.agents.push({
+          id:'ag_'+reg.slice(0,4)+'_'+r.role+'_'+i,
+          role:r.role, goal:r.goal, region:reg, home:reg,
+          gold:r.baseGold + (i%5)*3,
+          goods:r.baseGoods + (i%3),
+          force:r.force + (i%4),
+          morale:r.morale,
+          status:'active', // active|wounded|retreated|idle
+          lastActDay:0, nextActDay:1+(i%4),
+          relations:{player:0},
+          losses:0, deliveries:0
+        });
+      }
+    }
+  }
+  // Cap agents
+  if(a.agents.length>36)a.agents=a.agents.slice(0,36);
   return a;
 }
+
+function v4AgentPower(ag, state, region){
+  // Capability from finite resources + local conditions. No player-side bias.
+  const polity=state.nationLite?.[typeof polityOfRegion==='function'?polityOfRegion(region):null];
+  const order=Number(polity?.order)||50;
+  const road=state.infraLite?.assets?.['road_'+region];
+  const band=state.logisticsBands?.[region]||'normal';
+  let p = Number(ag.force)||8;
+  p += Math.floor((Number(ag.morale)||40)/12);
+  p += Math.floor((Number(ag.gold)||0)/25);
+  if(ag.role==='guard') p += Math.floor((Number(polity?.military)||45)*.15) + Math.max(0,Number(road?.capacityBand)||1)*2;
+  if(ag.role==='raider') p += Math.floor((100-order)*.12) + (band==='low'?5:0);
+  if(ag.role==='merchant') p += Math.floor((Number(ag.goods)||0)*.4);
+  if(ag.status==='wounded') p = Math.floor(p*0.55);
+  if(ag.status==='retreated') p = Math.floor(p*0.3);
+  return Math.max(1, p);
+}
+
 function v4AutonomyTick(state,day){
   const a=v4EnsureAutonomy(state);
   if(!a || !Number.isSafeInteger(day) || day<=a.lastTickDay)return false;
-  // Bounded discrete world activity: once each five days; no player presence or click required.
-  // Skipped days still advance the idempotency watermark.
   a.lastTickDay=day;
+  // Act every 5 days to keep density bounded (same cadence as Stage1)
   if(day%5!==0)return false;
-  const regions=Object.keys(REGION_PROFILE);
-  const region=regions[(Math.floor(day/5)-1)%regions.length];
-  const polity=state.nationLite?.[polityOfRegion(region)];
-  const road=state.infraLite?.assets?.['road_'+region];
-  const band=state.logisticsBands?.[region]||'normal';
-  const guard=8 + (Number(polity?.military)||45)*.4 + Math.max(0,Number(road?.capacityBand)||1)*7 +
-    (Number(polity?.food)||50)*.08 + Math.random()*30;
-  const raider=12 + (100-(Number(polity?.order)||50))*.42 + (band==='low'?13:0) + Math.random()*35;
-  const secured=guard>=raider;
-  const rec=a.regions[region]&&typeof a.regions[region]==='object'?a.regions[region]:{marketStress:0,deliveries:0,losses:0};
-  const before=Math.max(-18,Math.min(18,Number(rec.marketStress)||0));
-  const after=Math.max(-18,Math.min(18,before+(secured?-4:6)));
-  rec.marketStress=after;
-  rec.deliveries=Math.max(0,Number(rec.deliveries)||0)+(secured?1:0);
-  rec.losses=Math.max(0,Number(rec.losses)||0)+(secured?0:1);
-  rec.lastDay=day;
-  a.regions[region]=rec;
-  // The outcome is not a cosmetic message: market quotes consume marketStress,
-  // and an actual route node receives a small bounded change.
-  const ref=state.sim?.refs?.[region];
-  const node=ref&&state.sim?.nodes?.[ref.region];
-  if(node?.baseState && typeof simRefreshNode==='function'){
-    node.baseState.passability=cl((Number(node.baseState.passability)||65)+(secured?1:-2),5,100);
-    simRefreshNode(state.sim,node);
-  }
-  const text=secured?'商隊が護送され、交易品が届いた。':'街道の商隊が襲われ、運送品の一部が失われた。';
-  const incident={id:'v4_auto_'+day+'_'+region,day,region,kind:secured?'delivery':'raid',
-    text,marketStress:after,escort:Math.round(guard),raiders:Math.round(raider)};
-  a.history.push(incident);
-  if(a.history.length>50)a.history.splice(0,a.history.length-50);
-  // Local information; remote events remain unknown until travel/contact.
-  if(!Array.isArray(state.rumors))state.rumors=[];
-  if(region===state.world?.region || (state.away && state.travelDest===region)){
-    state.rumors.push({id:incident.id,subject:'商隊と街道',regionId:region,source:'V4Autonomous',
-      kind:'observed',confidence:0.8,heardDay:day,expiresDay:day+25,text});
-    if(state.rumors.length>80)state.rumors.splice(0,state.rumors.length-80);
+
+  const regions=Object.keys(REGION_PROFILE||{});
+  // Process a rotating subset of agents to avoid unlimited events per day
+  const due=a.agents.filter(ag=>ag.status!=='idle' && (Number(ag.nextActDay)||0)<=day);
+  // Limit concurrent actions this tick
+  const batch=due.sort((x,y)=>(Number(x.lastActDay)||0)-(Number(y.lastActDay)||0)||(Number(x.nextActDay)||0)-(Number(y.nextActDay)||0)||String(x.id).localeCompare(String(y.id))).slice(0,6);
+  for(const ag of batch){
+    const region=ag.region || ag.home || regions[0];
+    const power=v4AgentPower(ag,state,region);
+    const rec=a.regions[region]&&typeof a.regions[region]==='object'?a.regions[region]:{marketStress:0,deliveries:0,losses:0,security:50,marketGold:150,marketGoods:12};
+    if(!Number.isFinite(rec.marketGold))rec.marketGold=150;
+    if(!Number.isFinite(rec.marketGoods))rec.marketGoods=12;
+    rec.marketGold=Math.max(0,Math.min(500,rec.marketGold));
+    rec.marketGoods=Math.max(0,Math.min(100,rec.marketGoods));
+    const beforeStress=Math.max(-18,Math.min(18,Number(rec.marketStress)||0));
+    const beforeSec=Math.max(0,Math.min(100,Number(rec.security)||50));
+    let text='', kind='idle';
+
+    if(ag.role==='merchant' && ag.goal==='trade' && ag.status==='active'){
+      // Trade attempt: needs goods or gold
+      if((ag.goods||0)>=1 && (ag.gold||0)>=2){
+        const demand=50 + beforeStress*2 + Math.random()*20;
+        const supply=power + (ag.goods||0)*3;
+        if(supply>=demand*0.6 && rec.marketGold>=3){
+          // success
+          const profit=Math.min(rec.marketGold,3+Math.floor(Math.random()*5));
+          rec.marketGold-=profit;rec.marketGoods=Math.min(100,rec.marketGoods+1);
+          ag.gold=(ag.gold||0)+profit;
+          ag.goods=Math.max(0,(ag.goods||0)-1);
+          ag.deliveries=(ag.deliveries||0)+1;
+          rec.marketStress=Math.max(-18,beforeStress-3);
+          rec.deliveries=(Number(rec.deliveries)||0)+1;
+          kind='delivery';
+          text=ag.id+'の商隊が'+region+'で取引に成功し物資が流通した。';
+        }else{
+          // failed trade / loss
+          ag.gold=Math.max(0,(ag.gold||0)-2);
+          ag.goods=Math.max(0,(ag.goods||0)-1);
+          ag.morale=Math.max(10,(ag.morale||50)-5);
+          rec.marketStress=Math.min(18,beforeStress+2);
+          kind='trade_fail';
+          text=ag.id+'の取引は需要・供給または現地資金の問題で不成立。在庫と資金が減った。';
+        }
+      }else{
+        // restock attempt
+        if((ag.gold||0)>=5 && rec.marketGoods>=2){ ag.gold-=5;rec.marketGold=Math.min(500,rec.marketGold+5);rec.marketGoods-=2; ag.goods=(ag.goods||0)+2; text=ag.id+'が在庫を補充した。'; kind='restock'; }
+        else { ag.status='idle'; text=ag.id+'は資金不足で活動を休止した。'; kind='idle'; }
+      }
+    } else if(ag.role==='raider' && ag.goal==='raid' && ag.status==='active'){
+      // Find local guard strength
+      const guards=a.agents.filter(g=>g.role==='guard'&&g.region===region&&g.status==='active');
+      const guardP=guards.reduce((s,g)=>s+v4AgentPower(g,state,region),0) || (8+Math.random()*10);
+      const victim=a.agents.find(m=>m.role==='merchant'&&m.region===region&&m.status==='active'&&((Number(m.gold)||0)>0||(Number(m.goods)||0)>0));
+      if(power > guardP * 0.85 && victim){
+        // raid succeeds only against a real merchant with finite loot.
+        const seizedGold=Math.min(Number(victim.gold)||0,4+Math.floor(Math.random()*6));
+        const seizedGoods=Math.min(Number(victim.goods)||0,1);
+        victim.gold-=seizedGold;victim.goods-=seizedGoods;
+        if(!victim.relations||typeof victim.relations!=='object')victim.relations={};
+        if(!ag.relations||typeof ag.relations!=='object')ag.relations={};
+        victim.relations[ag.id]=Math.max(-50,(Number(victim.relations[ag.id])||0)-4);
+        ag.relations[victim.id]=Math.max(-50,(Number(ag.relations[victim.id])||0)-3);
+        ag.gold=(ag.gold||0)+seizedGold;
+        ag.goods=(ag.goods||0)+seizedGoods;
+        ag.losses=(ag.losses||0);
+        rec.marketStress=Math.min(18,beforeStress+5);
+        rec.losses=(Number(rec.losses)||0)+1;
+        rec.security=Math.max(0,beforeSec-8);
+        // passability hit
+        const ref=state.sim?.refs?.[region];
+        const node=ref&&state.sim?.nodes?.[ref.region];
+        if(node?.baseState && typeof simRefreshNode==='function'){
+          node.baseState.passability=cl((Number(node.baseState.passability)||65)-3,5,100);
+          simRefreshNode(state.sim,node);
+        }
+        // damage a guard if present
+        if(guards.length){
+          const g=guards[0];
+          g.force=Math.max(2,(g.force||10)-3);
+          g.morale=Math.max(10,(g.morale||50)-8);
+          if(g.force<=4){ g.status='wounded'; g.nextActDay=day+8; }
+        }
+        kind='raid';
+        text=ag.id+'の襲撃が'+region+'で成功。通行と供給に打撃。';
+      } else {
+        // repelled
+        ag.force=Math.max(2,(ag.force||12)-4);
+        ag.morale=Math.max(10,(ag.morale||50)-10);
+        ag.losses=(ag.losses||0)+1;
+        if(ag.force<=5){ ag.status='wounded'; ag.nextActDay=day+10; }
+        rec.security=Math.min(100,beforeSec+4);
+        rec.marketStress=Math.max(-18,beforeStress-1);
+        kind='repel';
+        text=ag.id+'の襲撃は'+region+'で撃退された。襲撃側が損耗。';
+      }
+    } else if(ag.role==='guard' && ag.goal==='escort' && ag.status==='active'){
+      // Escort / patrol: consume gold, improve security if funded
+      if((ag.gold||0)>=3){
+        ag.gold-=3;
+        rec.security=Math.min(100,beforeSec+5);
+        rec.marketStress=Math.max(-18,beforeStress-2);
+        rec.patrols=(Number(rec.patrols)||0)+1;
+        const ref=state.sim?.refs?.[region];
+        const node=ref&&state.sim?.nodes?.[ref.region];
+        if(node?.baseState && typeof simRefreshNode==='function'){
+          node.baseState.passability=cl((Number(node.baseState.passability)||65)+1,5,100);
+          simRefreshNode(state.sim,node);
+        }
+        kind='escort';
+        text=ag.id+'が'+region+'を護送・巡回し治安が改善した。';
+      } else {
+        ag.morale=Math.max(10,(ag.morale||50)-3);
+        if(ag.morale<25){ ag.status='idle'; }
+        kind='underfunded';
+        text=ag.id+'は資金不足で巡回を縮小した。';
+      }
+    } else if(ag.status==='wounded'){
+      // recovery costs time and gold
+      if((ag.gold||0)>=4){ ag.gold-=4; ag.force=Math.min(ag.force+3, 30); ag.morale=Math.min(100,ag.morale+10); }
+      if((ag.force||0)>=8 && (ag.morale||0)>=40){ ag.status='active'; }
+      kind='recover';
+      text=ag.id+'が回復を試みている（force='+ag.force+', morale='+ag.morale+'）。';
+    }
+
+    ag.lastActDay=day;
+    ag.nextActDay=Math.max(Number(ag.nextActDay)||0, day + 5 + (ag.role==='raider'?2:4) + Math.floor(Math.random()*3));
+    if(rec.security!==beforeSec){
+      const secRef=state.sim?.refs?.[region],secNode=secRef&&state.sim?.nodes?.[secRef.region];
+      if(secNode?.baseState && typeof simRefreshNode==='function'){
+        secNode.baseState.safety=cl((Number(secNode.baseState.safety)||55)+(rec.security>beforeSec?2:-3),5,100);
+        simRefreshNode(state.sim,secNode);
+      }
+    }
+    ag.gold=Math.max(0,Math.min(100000,Number(ag.gold)||0));ag.goods=Math.max(0,Math.min(10000,Number(ag.goods)||0));
+    a.regions[region]=rec;
+
+    if(text){
+      const incident={id:'v4_auto_'+day+'_'+ag.id, day, region, kind, text,
+        marketStress:rec.marketStress, security:rec.security,
+        agentId:ag.id, role:ag.role,
+        forceAfter:ag.force, goldAfter:ag.gold, statusAfter:ag.status};
+      a.history.push(incident);
+      if(a.history.length>50)a.history.splice(0,a.history.length-50);
+      // Local info only
+      if(!Array.isArray(state.rumors))state.rumors=[];
+      if(region===state.world?.region || (state.away && state.travelDest===region) || (state.regionIntel?.[region]?.visited===true && Math.random()<0.35)){
+        state.rumors.push({id:incident.id, subject:ag.role+'活動', regionId:region, source:'V4Autonomous',
+          kind: kind==='raid'||kind==='repel'?'observed':'rumor', confidence:0.7,
+          heardDay:day, expiresDay:day+25, text:text.slice(0,140)});
+        if(state.rumors.length>80)state.rumors.splice(0,state.rumors.length-80);
+      }
+    }
   }
   return true;
 }
+
 function v4AutonomyMarketFactor(state,region){
   const stress=Number(state?.v4Events?.autonomy?.regions?.[region]?.marketStress)||0;
   return 1+Math.max(-18,Math.min(18,stress))*.01;
 }
+
 function v4RenderAutonomous(){
   const node=document.getElementById('v4AutonomyStatus');
   if(!node||!S)return;
   const a=S.v4Events?.autonomy;
   if(!a||!Array.isArray(a.history)){node.textContent='世界の自律的な交易・街道事件は日付経過で記録されます。';return;}
-  const known=e=>e.region===S.world?.region||S.regionIntel?.[e.region]?.visited===true;
+  const known=e=>e.region===S.world?.region || (S.away&&e.region===S.travelDest) || (S.rumors||[]).some(r=>r.id===e.id&&r.regionId===e.region&&r.heardDay<=S.day);
   const list=a.history.filter(known).slice(-8);
-  node.textContent=list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\n'):
-    '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。';
+  let extra='';
+  if(a.agents&&a.agents.length){
+    const here=a.agents.filter(ag=>ag.region===(S.world?.region)&&ag.status!=='idle').slice(0,4);
+    if(here.length) extra='\\n現地主体: '+here.map(ag=>ag.role+'(force'+ag.force+'/金'+ag.gold+'/'+ag.status+')').join(', ');
+  }
+  node.textContent=(list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\\n'):
+    '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。')+extra;
+}
+
+/* ===== Phase3 Stage2: Battle negotiation (F04) + postwar (F12) ===== */
+function v4BattleNegotiable(){
+  if(!S || !S.battle || !S.en || !S.en.length) return false;
+  // Only humanoid-capable foes; beasts/animals skip diplomacy
+  const livingEn=S.en.filter(e=>e.hp>0);
+  if(!livingEn.length) return false;
+  const nonHuman=livingEn.every(e=>{
+    const n=(e.name||'')+(e.kind||'')+(e.type||'');
+    return /獣|犬|狼|鳥|虫|蛇|蜘蛛|猪|オオカミ|スライム|slime|獣人以外の動物/i.test(n);
+  });
+  if(nonHuman) return false;
+  // Once per battle session limit
+  if(S.v4BattleNegUsed >= 2) return false;
+  return true;
+}
+
+function v4BattleForceRatio(){
+  const allyP=living(S.party).reduce((s,u)=>s+(u.hp||0)+((u.weapon&&u.weapon.atk)||0),0);
+  const enP=living(S.en).reduce((s,u)=>s+(u.hp||0)+((u.weapon&&u.weapon.atk)||0),0);
+  if(enP<=0) return 99;
+  const reg=activeRegion(S);
+  const localRaider=S.v4Events?.autonomy?.agents?.find(a=>a.role==='raider'&&a.region===reg);
+  const morale=localRaider&&Number.isFinite(localRaider.morale)?localRaider.morale:55;
+  return Math.max(0.1,(allyP/Math.max(1,enP))*(1+(55-morale)/250));
+}
+
+function v4OfferBattleNegotiation(){
+  if(!v4BattleNegotiable()){lg('【交渉】この相手・状況では交渉できない。');return;}
+  const box=document.getElementById('v4BattleNegBox');if(!box)return;
+  box.replaceChildren();box.hidden=false;box.style.display='block';
+  const h=document.createElement('h3');h.textContent='戦闘中の交渉（F04）';box.appendChild(h);
+  const note=document.createElement('p');note.className='s';
+  note.textContent='戦力比 約'+v4BattleForceRatio().toFixed(2)+'。交渉は成否不定、最大2回。失敗時は交渉に1ターン使い敵は通常行動します。費用は成功しなくても失われます。';box.appendChild(note);
+  const opts=[
+    {id:'cease_pay',label:'金品で停戦を提案',cost:8,risk:'失敗時は資金損失・敵が通常行動'},
+    {id:'exchange_info',label:'情報交換で一時休戦',cost:2,risk:'失敗時は敵の警戒増加・通常行動'},
+    {id:'demand_surrender',label:'降伏を要求',cost:0,risk:'相手が優勢なら拒否されやすい・通常行動'},
+    {id:'withdraw_talk',label:'互いに撤退を提案',cost:0,risk:'失敗時は追撃の危険・通常行動'}
+  ];
+  for(const opt of opts){
+    const b=document.createElement('button');b.type='button';b.style.cssText='display:block;width:100%;margin:6px 0;white-space:normal;';
+    b.disabled=(Number(S.gold)||0)<opt.cost;
+    b.textContent=opt.label+'（費用'+opt.cost+'通貨）／'+opt.risk;
+    b.onclick=()=>v4ResolveBattleNeg(opt.id);
+    box.appendChild(b);
+  }
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='交渉をやめる';
+  cancel.onclick=v4CloseBattleNeg;box.appendChild(cancel);
+}
+
+function v4CloseBattleNeg(){
+  const box=document.getElementById('v4BattleNegBox');
+  if(box){ box.innerHTML=''; box.hidden=true; box.style.display='none'; }
+}
+
+function v4ResolveBattleNeg(optId){
+  if(!S.battle || !v4BattleNegotiable()){ v4CloseBattleNeg(); return; }
+  const costMap={cease_pay:8,exchange_info:2,demand_surrender:0,withdraw_talk:0};
+  if(!Object.prototype.hasOwnProperty.call(costMap,optId))return;
+  if((Number(S.gold)||0)<costMap[optId]){lg('【交渉】所持金不足');return;}
+  S.v4BattleNegUsed=(S.v4BattleNegUsed||0)+1;
+  const ratio=v4BattleForceRatio();
+  const region=typeof activeRegion==='function'?activeRegion(S):(S.world&&S.world.region)||'';
+  let success=false, log='', goldCost=0, postwar=null;
+
+  if(optId==='cease_pay'){
+    goldCost=8;
+    if((S.gold||0)<goldCost){ lg('【交渉】所持金不足'); return; }
+    S.gold-=goldCost;
+    // Success more likely if player stronger or equal
+    success = ratio>=0.9 ? Math.random()<0.65 : Math.random()<0.25;
+    if(success){
+      log='金品を渡して停戦が成立した。双方が戦闘を止めた。';
+      // End battle without full victory rewards (no double reward)
+      S.battle=false;S.phase='field';S.en=[];S.v4BattleNegEnded=true;
+      postwar={kind:'ceasefire', region, day:S.day, goldPaid:goldCost, ratio};
+    } else {
+      log='停戦提案は拒否された。金は失われ、敵の士気が上がった気配。';
+      living(S.en).forEach(e=>{ if(e.hp>0) e.hp=Math.min(e.hp+1, e.maxHp||e.hp+1); });
+    }
+  } else if(optId==='exchange_info'){
+    goldCost=2;
+    if((S.gold||0)<goldCost){ lg('【交渉】所持金不足'); return; }
+    S.gold-=goldCost;
+    success = Math.random() < (0.4 + Math.min(0.3, ratio*0.15));
+    if(success){
+      log='情報を交換し、今ターンは双方が攻撃を控えることで合意した。';
+      // Skip enemy attacks this resolve by flag
+      S.v4NegTruceTurn=true;
+      if(!Array.isArray(S.rumors))S.rumors=[];
+      S.rumors.push({id:'v4neg_'+S.day, subject:'戦闘中情報', regionId:region, source:'V4Neg', kind:'observed', confidence:0.75, heardDay:S.day, expiresDay:S.day+15, text:'敵から地域の警備配置の一端を聞いた。'});
+      postwar={kind:'info_truce', region, day:S.day};
+    } else {
+      log='情報交換は決裂。敵は警戒を強めた。';
+      if(S.exploration) S.exploration.danger=cl((S.exploration.danger||1)+1,1,100);
+    }
+  } else if(optId==='demand_surrender'){
+    success = ratio>=1.4 ? Math.random()<0.55 : (ratio>=1.0 ? Math.random()<0.2 : Math.random()<0.05);
+    if(success){
+      log='降伏を受け入れさせた。敵は武装を解いて撤退した。';
+      S.battle=false;S.phase='field';S.en=[];S.v4BattleNegEnded=true;
+      postwar={kind:'surrender', region, day:S.day, ratio};
+    } else {
+      log='降伏要求は一蹴され、敵は攻撃の機を窺っている。';
+    }
+  } else if(optId==='withdraw_talk'){
+    success = Math.random() < (0.35 + (ratio>=1?0.2:0));
+    if(success){
+      log='互いに撤退することで合意した。戦闘を離脱する。';
+      S.battle=false;S.phase='field';S.en=[];S.v4BattleNegEnded=true;
+      // retreat path without victory
+      postwar={kind:'mutual_withdraw', region, day:S.day};
+    } else {
+      log='撤退提案は拒否された。追撃の構えを取られた。';
+      if(S.exploration) S.exploration.danger=cl((S.exploration.danger||1)+1,1,100);
+    }
+  }
+
+  lg('【V4交渉】'+log);
+  v4CloseBattleNeg();
+
+  // F12 postwar persistence
+  if(postwar){
+    const a=v4EnsureAutonomy(S);
+    if(a){
+      a.postwar.push({...postwar, id:'pw_'+S.day+'_'+(a.postwar.length+1)});
+      if(a.postwar.length>40)a.postwar=a.postwar.slice(-40);
+    }
+    const ri=typeof ensureRegionIntel==='function'?ensureRegionIntel(S,region):null;
+    if(ri){
+      if(postwar.kind==='ceasefire'||postwar.kind==='surrender') ri.reputation=cl((ri.reputation||0)+1,-50,50);
+      if(postwar.kind==='mutual_withdraw') ri.reputation=cl((ri.reputation||0)-0,-50,50);
+    }
+    // Affect local raider/guard agents if any
+    if(a&&a.agents){
+      a.agents.filter(ag=>ag.region===region&&ag.role==='raider').forEach(ag=>{
+        if(postwar.kind==='surrender'||postwar.kind==='ceasefire'){ ag.morale=Math.max(10,(ag.morale||50)-8); ag.force=Math.max(2,(ag.force||10)-2); }
+      });
+    }
+  }
+
+  if(!S.battle){
+    // Battle ended via negotiation — do not grant normal victory quest rewards here (avoid double)
+    lg('【戦闘】交渉により戦闘が終了した。');
+    if(typeof render==='function') render();
+    if(typeof save==='function') save();
+  } else {
+    if(!success || optId==='exchange_info'){
+      // Negotiation occupies one combat turn. All allied units defend while enemy units take normal actions.
+      const old=S.party.map(u=>({id:u.id,act:u.act,targetId:u.targetId}));
+      S.party.forEach(u=>{if(u.hp>0){u.act='defend';u.targetId=null;}});
+      try{resolveTurn();}finally{for(const prev of old){const u=S.party.find(x=>x.id===prev.id);if(u){u.act=prev.act;u.targetId=prev.targetId;}}}
+    }
+    if(typeof render==='function') render();
+    if(typeof save==='function')save();
+  }
+}
+
+function v4OnBattleRenderHook(){
+  // Show negotiate button only when battle active and negotiable
+  const btn=document.getElementById('btnV4BattleNeg');
+  if(!btn) return;
+  if(S&&S.battle&&v4BattleNegotiable()){ btn.hidden=false; btn.disabled=false; }
+  else { btn.hidden=true; }
 }
 
 function v4EnsureState(){
@@ -2300,9 +2640,11 @@ function resolveTurn(){
   const beforeLogTail=S.logs[S.logs.length-1]||null;
   S.uxLastBattleCommands=S.party.filter(u=>u.hp>0&&(u.hero||u.mode==='指示')).map(u=>({id:u.id,act:u.act,targetId:u.targetId,moveDir:u.moveDir,moveSteps:u.moveSteps}));
   S.heroRescuePending=false;
+  const v4SkipEnemyTurn=!!S.v4NegTruceTurn;
+  if(v4SkipEnemyTurn){ S.v4NegTruceTurn=false; lg('【交渉】情報交換の約束により敵は今ターン行動しない。'); }
   syncTargets();
   const units=[...living(S.party),...living(S.en)];
-  const plans=units.map(u=>{
+  const plans=units.filter(u=>!(v4SkipEnemyTurn&&u.side==='enemy')).map(u=>{
     const p=planFor(u);
     if(p.act==="attack"){
       const t=findU(p.targetId);
@@ -2829,7 +3171,7 @@ function beginBattleFromExploration(){
   if(S.exploration&&S.exploration.battleEdge>0){
     S.en.forEach(e=>{e.cell=clampCell(e.cell+S.exploration.battleEdge);});
   }
-  S.phase="battle";S.battle=true;
+  S.phase="battle";S.battle=true;S.v4BattleNegUsed=0;S.v4NegTruceTurn=false;
   const qp=questProfile(S.quest.type);
   lg("遭遇。"+S.quest.type+"： "+qp.desc+" 戦闘開始（"+living(S.party).length+"対"+S.en.length+"）。");
   render();
@@ -5920,7 +6262,8 @@ function render(){
   simRender();
   v18RenderExpeditionAdvisor(); // V18 read-only render hook
   v19RenderPhase0(); // V1.9 Phase0 only
-  try{ v4OnRenderHook(); }catch(e){} // V4 Phase1 UI refresh (display only)
+  try{ v4OnRenderHook(); }catch(e){}
+  try{ v4OnBattleRenderHook(); }catch(e){console.warn('V4 negotiation render',e);} // V4 negotiation UI refresh
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
