@@ -1608,6 +1608,14 @@ function v4AutonomyMarketFactor(state,region){
   return 1+Math.max(-18,Math.min(18,stress))*.01;
 }
 
+/* V5 player-facing terminology: keep underlying 27 agents and all simulation values intact. */
+function v5AgentNarrativeLabel(ag){
+  if(!ag)return '関係する集団';
+  return ({merchant:'交易団',raider:'襲撃集団',guard:'街道警備隊'})[ag.role]||'地域の集団';
+}
+function v5AgentNarrativeStatus(status){
+  return ({active:'活動中',wounded:'損害から回復中',retreated:'撤退中',idle:'活動停止中'})[status]||'状況不明';
+}
 function v4RenderAutonomous(){
   const node=document.getElementById('v4AutonomyStatus');
   if(!node||!S)return;
@@ -1618,9 +1626,16 @@ function v4RenderAutonomous(){
   let extra='';
   if(a.agents&&a.agents.length){
     const here=a.agents.filter(ag=>ag.region===(S.world?.region)&&ag.status!=='idle').slice(0,4);
-    if(here.length) extra='\\n現地主体: '+here.map(ag=>ag.role+'(force'+ag.force+'/金'+ag.gold+'/'+ag.status+')').join(', ');
+     if(here.length) extra='\n現地で活動する集団：'+here.map(ag=>v5AgentNarrativeLabel(ag)+'（'+v5AgentNarrativeStatus(ag.status)+'）').join('、');
   }
-  node.textContent=(list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\n'):
+  node.textContent=(list.length?list.map(e=>{
+    const linked=(a.agents||[]).find(ag=>ag&&ag.id===e.agentId);
+    const label=v5AgentNarrativeLabel(linked||{role:e.role});
+    let story=String(e.text||'');
+    if(e.agentId)story=story.split(String(e.agentId)).join(label);
+    story=story.replace(/（force=\d+,\s*morale=\d+）。?/g,'（戦力と士気を回復中）。');
+    return 'Day'+e.day+'／'+e.region+'：'+story+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）';
+  }).join('\n'):
     '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。')+extra;
 }
 
@@ -2197,7 +2212,11 @@ function v4RenderWorldNpcPanel(){
   const post=document.getElementById('v4PostwarStatus');
   if(post&&S?.v4Events?.autonomy){
     const known=(S.v4Events.autonomy.postwar||[]).filter(p=>p&&v4KnownRegion(S,p.region)).slice(-5);
-    post.textContent=known.length?known.map(p=>'Day'+p.day+'／'+p.region+'：'+p.kind+(p.agentId?'／'+p.agentId:'')).join('\n'):'訪問地域の戦後記録はまだありません。';
+     const labels={ceasefire:'停戦',info_truce:'情報交換による休戦',surrender:'降伏',mutual_withdraw:'相互撤収'};
+     post.textContent=known.length?known.map(p=>{
+       const agent=(S.v4Events.autonomy.agents||[]).find(ag=>ag&&ag.id===p.agentId);
+       return 'Day'+p.day+'／'+p.region+'：'+(labels[p.kind]||'戦闘後の合意')+(p.agentId?'／'+v5AgentNarrativeLabel(agent):'');
+     }).join('\n'):'訪問地域の戦後記録はまだありません。';
   }
 }
 
