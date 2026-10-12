@@ -152,6 +152,12 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 .v5-contact-title{font-size:12px;color:#b4d7bf;font-weight:700;margin-bottom:6px}
 .v5-contact-person{font-size:14px;line-height:1.6;margin:0 0 6px;overflow-wrap:anywhere}
 .v5-contact-history{font-size:12px;color:var(--muted);line-height:1.6;margin:0;overflow-wrap:anywhere}
+/* V5 story slice: link real regional NPC conversations to existing local work; no invented rewards. */
+.v5-episode{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);min-width:0}
+.v5-episode-kicker{font-size:11px;font-weight:700;color:#b8d8c5}
+.v5-episode-heading{font-size:14px;font-weight:650;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}
+.v5-episode p{font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0}
+.v5-episode-next{color:#dfc999}
 /* PERSONA_P0_20261012: context-aware views, event spotlight and departure notice */
 [hidden]{display:none!important}
 .ux-depart-alert{border:1px solid #88633b;background:#32261d;color:#f1d7a9;padding:11px;border-radius:9px;white-space:pre-wrap;line-height:1.65;margin:9px 0}
@@ -357,6 +363,12 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       <p id="v5ContactPerson" class="v5-contact-person"></p>
       <p id="v5ContactHistory" class="v5-contact-history" aria-live="polite"></p>
     </div>
+    <section class="v5-episode" id="v5EpisodePanel" aria-label="この土地で進む小さな物語">
+      <div class="v5-episode-kicker" id="v5EpisodeStep">土地の話を確かめる</div>
+      <div class="v5-episode-heading" id="v5EpisodeTitle">住人と歩く小さな冒険</div>
+      <p id="v5EpisodeStory"></p>
+      <p id="v5EpisodeNext" class="v5-episode-next" aria-live="polite"></p>
+    </section>
     <div id="uxLocalTalkNote" class="ux-hint" aria-live="polite"></div>
     <div class="ux-choice">
       <button type="button" onclick="uxFieldSurvey()">現地を調査する</button>
@@ -6832,7 +6844,7 @@ function render(){
   try{ v4OnBattleRenderHook(); }catch(e){console.warn('V4 negotiation render',e);} // V4 negotiation UI refresh
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
-  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
+  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();v5RenderLocalEpisode();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -8587,7 +8599,9 @@ function uxAskLocal(){
         return 'この土地の旅人なら、'+uxCurrentSite()+'を通る道の状態を見てから次の行き先を決める。私にも遠方の確かな情報はない。';})());
   S.uxFieldTalkDay=S.day;
   const person=uxLocalContact(region),world=uxRegionRecord(region);
-  const claim='【'+person.name+'／'+person.role+'】「'+info+'」'+person.motive;
+  const completed=(Array.isArray(S.uxFieldJobHistory)?S.uxFieldJobHistory:[]).filter(h=>h&&h.region===region&&h.status==='success'&&Number(h.completedDay)<=S.day).slice(-1)[0];
+  const prior=completed?'／あなたが以前この地域で'+(completed.type==='survey'?'地形調査':'採集')+'を納品したことを伝えた。相手の反応や効果は確認していない。':'';
+  const claim='【'+person.name+'／'+person.role+'】「'+info+'」'+person.motive+prior;
   S.uxLastTalk={region,day:S.day,site:uxCurrentSite(),text:claim,source:person.role};
   S.uxLocalTalkHistory=Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[];
   S.uxLocalTalkHistory.push(S.uxLastTalk);S.uxLocalTalkHistory=S.uxLocalTalkHistory.slice(-40);
@@ -8666,6 +8680,55 @@ function v5RenderContact(){
   history.textContent=again+' 記録 '+talks.length+'回／最後はDay '+day+
     (last.site?'・'+String(last.site):'')+'。記録は実際に聞いた会話だけを数える。'+
     (S.uxFieldTalkDay===S.day?' 今日は相談済み。翌日なら改めて話を聞ける。':' 今日は新しい話を聞ける。');
+}
+/* A three-beat local episode derived from actions that ALREADY exist: real talk,
+   local work acceptance, and real delivery. No new job, reward, Save field or simulation Tick. */
+function v5RenderLocalEpisode(){
+  const panel=document.getElementById('v5EpisodePanel');
+  if(!panel)return;
+  if(!S||!S.away){panel.hidden=true;return;}
+  panel.hidden=false;
+  const region=activeRegion(S),contact=uxLocalContact(region),day=Math.max(1,Math.floor(Number(S.day)||1));
+  const history=Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[];
+  const talked=history.filter(h=>h&&h.region===region&&Number.isSafeInteger(Number(h.day))&&Number(h.day)>=1&&Number(h.day)<=day);
+  const first=talked[0],last=talked[talked.length-1];
+  const active=S.uxFieldJob?.status==='active'&&S.uxFieldJob.region===region?S.uxFieldJob:null;
+  const jobs=Array.isArray(S.uxFieldJobHistory)?S.uxFieldJobHistory:[];
+  const done=jobs.filter(h=>h&&h.region===region&&h.status==='success'&&
+    Number.isSafeInteger(Number(h.completedDay))&&Number(h.completedDay)<=day&&
+    (!first||Number(h.completedDay)>=Number(first.day))).slice(-1)[0];
+  const expired=jobs.filter(h=>h&&h.region===region&&h.status==='expired').slice(-1)[0];
+  const area=uxRegionRecord(region);
+  const reason=area.safety!=null&&area.safety<45?'道の安全が落ちている。':
+    area.logistics!=null&&area.logistics<45?'荷の行き来が細っている。':
+    '街道をめぐる事情は日々変わる。';
+  const name=document.getElementById('v5EpisodeTitle'),step=document.getElementById('v5EpisodeStep');
+  const story=document.getElementById('v5EpisodeStory'),next=document.getElementById('v5EpisodeNext');
+  if(!name||!step||!story||!next)return;
+  name.textContent=contact.name+'と'+region+'の仕事';
+  if(!talked.length){
+    step.textContent='第1段階／土地の人に会う';
+    story.textContent=contact.name+'は'+contact.motive+' '+reason+' 本人から聞くまでは、詳しい事情は分からない。';
+    next.textContent='次の行動：「地元の人に話を聞く」。噂と事実を区別して、現地の手掛かりを得る。';
+  }else if(active){
+    step.textContent='第2段階／現地で行動する';
+    const kind=active.type==='survey'?'地形調査':'採集';
+    const goal=Math.max(1,Number(active.goal)||2),progress=Math.min(goal,Math.max(0,Number(active.progress)||0));
+    story.textContent='Day '+last.day+'に'+contact.name+'から話を聞いた。'+kind+'の現地仕事を実行中（'+progress+'/'+goal+'）。'+
+      (day>Number(active.dueDay)?'期限を過ぎている。':'納品期限はDay '+active.dueDay+'。');
+    next.textContent=progress>=goal?'次の行動：「成果を納める」。'+(active.type==='gather'?'実物の素材が必要。':'')+' 報酬は既存の現地仕事で一度だけ確定する。':
+      '次の行動：「'+(active.type==='survey'?'現地を調査する':'採集する')+'」。食料・水・疲労と周囲の事件に注意する。';
+  }else if(done){
+    step.textContent='第3段階／成果と再訪';
+    story.textContent='Day '+done.completedDay+'、この土地で'+(done.type==='survey'?'地形調査':'採集')+'の仕事を納品した。'+
+      '受け取った報酬は'+done.reward+'通貨（既存の実績）。周囲の状態は他の出来事でも変化するため、仕事だけが原因とは限らない。';
+    next.textContent='次の行動：帰還して旅の記録を読む／日を改めて'+contact.name+'の話を聞き、変化を確かめる。';
+  }else if(talked.length){
+    step.textContent='第2段階／自分の行動を選ぶ';
+    story.textContent='Day '+last.day+'、'+contact.name+'の話を聞いた。'+reason+
+      (expired?' 以前の現地仕事は期限切れになった。':'');
+    next.textContent='次の行動：下の「現地の小仕事」で採集か地形調査を選び、「仕事を引き受ける」。既存の仕事なので報酬の重複はない。';
+  }
 }
 function uxRenderJourney(){
   if(!S)return;
