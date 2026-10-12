@@ -675,8 +675,10 @@ const REGION_PROFILE={
 };
 function regionProfile(region){return REGION_PROFILE[region]||REGION_PROFILE["灰風平原"];}
 
-/* ========== V4 Random Events Phase1 Engine (Grok Candidate 2026-10-11) ========== */
+/* ========== V4 Random Events Phase2 Engine (Grok Redo Candidate 2026-10-12) ========== */
+/* Phase1 5 events kept intact. +30 new covering F01-F14. Minimal-diff additive. */
 const V4_EVENT_DEFS = [
+  /* ===== Phase1 retained ===== */
   {
     eventId: "v4_b058_gate_retreat",
     sourceIds: ["B058"],
@@ -708,10 +710,10 @@ const V4_EVENT_DEFS = [
     cap: 4,
     eligibility: { phases: ["field","exploration"], away: true, regions: null },
     actions: [
-      { id: "investigate", label: "調査する", cost: { fatigue: 2, food: 0 }, effects: { intel: 5, time: 0, log: "植物の種類と繁茂原因を調べた。通れる道の情報を得た。" } },
-      { id: "clear", label: "除去する", cost: { fatigue: 5, food: 1 }, effects: { materials: { herb: 1 }, fatigue: 3, log: "植物を切り開いて道を確保した。少し時間と体力を使った。" } },
+      { id: "investigate", label: "調査する", cost: { fatigue: 2 }, effects: { intel: 5, log: "植物の種類と繁茂原因を調べた。通れる道の情報を得た。" } },
+      { id: "clear", label: "除去する", cost: { fatigue: 5, food: 1 }, effects: { materials: { herb: 1 }, fatigue: 3, passability: 5, log: "植物を切り開いて道を確保した。少し時間と体力を使った。" } },
       { id: "detour", label: "迂回する", cost: { fatigue: 3, water: 1 }, effects: { time: 1, log: "植物を避けて遠回りした。到着が遅れた。" } },
-      { id: "leave", label: "放置して戻る", cost: {}, effects: { log: "道を塞ぐ植物を放置し、別の行動を選んだ。" } }
+      { id: "leave", label: "放置して戻る", cost: {}, effects: { passability: -3, log: "道を塞ぐ植物を放置し、別の行動を選んだ。" } }
     ]
   },
   {
@@ -767,13 +769,575 @@ const V4_EVENT_DEFS = [
       { id: "rest", label: "静かに休む", cost: {}, effects: { fatigue: -2, log: "何事もなく夜が過ぎた。静かに休息できた。" } },
       { id: "watch", label: "見張りを立てる", cost: { fatigue: 1 }, effects: { log: "見張りを立てたが、特に異変はなかった。" } }
     ]
+  },
+  /* ===== Phase2 new 30 events (F01-F14 coverage) ===== */
+  {
+    eventId: "v4_b003_fail_to_job",
+    sourceIds: ["B003"],
+    family: "F01",
+    eventVersion: 1,
+    scope: ["away","field","exploration"],
+    title: "大失敗からの仕事",
+    desc: "直前の失敗や未完了が地元の目に留まり、臨時の雑務・再委託が持ちかけられる。引き受けるか拒否するかで信用と依頼後続が変わる。",
+    weight: 9,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null, minDay: 2 },
+    actions: [
+      { id: "accept", label: "引き受ける（報酬あり）", cost: { fatigue: 3 }, effects: { gold: 8, reputation: 1, log: "失敗の後始末を引き受け、小金とわずかな信用を得た。" } },
+      { id: "negotiate", label: "条件交渉する", cost: { fatigue: 1 }, effects: { gold: 4, intel: 2, log: "条件を詰めて報酬を確保した。情報も得た。" } },
+      { id: "refuse", label: "断って離れる", cost: {}, effects: { reputation: -1, log: "再委託を断り、その場を離れた。信用はわずかに下がった。" } }
+    ]
+  },
+  {
+    eventId: "v4_b016_unpicked_quest",
+    sourceIds: ["B016"],
+    family: "F01",
+    eventVersion: 1,
+    scope: ["town","away"],
+    title: "選ばれなかった依頼",
+    desc: "掲示板や口コミで他の冒険者に取られた依頼の余波が残っている。情報を拾う・後追いする・無視する選択。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 4,
+    eligibility: { phases: ["town","field"], away: null },
+    actions: [
+      { id: "gather_info", label: "情報を集める", cost: { fatigue: 1 }, effects: { intel: 5, rumor: true, log: "選ばれなかった依頼の内容と結果を聞き出した。" } },
+      { id: "chase", label: "後追いで関与する", cost: { fatigue: 4, food: 1 }, effects: { gold: 6, danger: 1, log: "後から現場に入り、残りの仕事を片付けた。" } },
+      { id: "ignore", label: "無視する", cost: {}, effects: { log: "他人の依頼の余波を無視した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b032_can_return_but",
+    sourceIds: ["B032"],
+    family: "F01",
+    eventVersion: 1,
+    scope: ["away","exploration"],
+    title: "帰還できるがしない",
+    desc: "目的は達成済みだが、現地に留まる理由や誘惑がある。帰還を先延ばしする選択が世界時間と資源に影響する。",
+    weight: 7,
+    cooldownDays: 7,
+    cap: 2,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "stay", label: "もう一日滞在する", cost: { food: 1, water: 1 }, effects: { time: 1, intel: 3, log: "帰還を一日延ばし、現地で追加情報を得た。" } },
+      { id: "return_now", label: "直ちに帰還する", cost: {}, effects: { log: "目的達成後、速やかに拠点へ戻った。" } },
+      { id: "side_job", label: "現地の小仕事を受ける", cost: { fatigue: 3 }, effects: { gold: 5, time: 1, log: "現地の小仕事を片付けてから帰還の準備をした。" } }
+    ]
+  },
+  {
+    eventId: "v4_a017_plague_ferry",
+    sourceIds: ["A017"],
+    family: "F02",
+    eventVersion: 1,
+    scope: ["travel","away"],
+    title: "疫病で閉じた渡し場",
+    desc: "渡し場が疫病警戒で一時閉鎖されている。迂回・交渉・強行で移動コストと地域通行性が変わる。",
+    weight: 9,
+    cooldownDays: 8,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "detour", label: "陸路で迂回する", cost: { fatigue: 5, food: 1, water: 1 }, effects: { time: 1, log: "渡し場を避けて陸路を回った。時間がかかった。" } },
+      { id: "negotiate", label: "通行交渉する", cost: { gold: 4 }, effects: { pass: true, log: "警戒中の渡し場と交渉し、限定通行を認めてもらった。" } },
+      { id: "force", label: "強行する", cost: { fatigue: 3 }, effects: { injury: 1, reputation: -2, passability: -2, log: "強行したが警戒を招き、傷と通行性の悪化を残した。" } },
+      { id: "wait", label: "待機して様子を見る", cost: { food: 1 }, effects: { time: 1, intel: 2, log: "一日待って状況を観察した。" } }
+    ]
+  },
+  {
+    eventId: "v4_a063_walking_water",
+    sourceIds: ["A063"],
+    family: "F02",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "歩く貯水池",
+    desc: "移動する水源の噂や痕跡がある。追跡・利用・放置で水資源と地形情報が変わる。",
+    weight: 8,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "track", label: "痕跡を追う", cost: { fatigue: 3 }, effects: { intel: 4, water: 2, log: "移動水源の痕跡を追い、水を補給できた。" } },
+      { id: "use", label: "水源を利用する", cost: { fatigue: 1 }, effects: { water: 3, log: "一時的な水源から水を確保した。" } },
+      { id: "leave", label: "放置する", cost: {}, effects: { log: "水源の噂を聞き流した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b020_report_silence",
+    sourceIds: ["B020"],
+    family: "F03",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "通報か沈黙か",
+    desc: "第三者の違法・危険行為を目撃した。通報・沈黙・利用で法的リスクと噂・信用が分岐する。",
+    weight: 10,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "report", label: "当局に通報する", cost: { fatigue: 1 }, effects: { reputation: 2, rumor: true, log: "目撃を通報した。当局の記録に残り、信用が上がった。" } },
+      { id: "silence", label: "沈黙する", cost: {}, effects: { log: "何も言わずその場を離れた。" } },
+      { id: "leverage", label: "情報を利用する", cost: { fatigue: 2 }, effects: { gold: 7, reputation: -1, rumor: true, log: "情報を交渉材料にし、金を得たが影の評判もついた。" } }
+    ]
+  },
+  {
+    eventId: "v4_b074_watch_watcher",
+    sourceIds: ["B074"],
+    family: "F03",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "監視する敵を監視する",
+    desc: "自分を監視している気配がある。逆監視・接触・離脱で情報戦と危険度が変わる。",
+    weight: 8,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "counter", label: "逆監視する", cost: { fatigue: 3 }, effects: { intel: 7, danger: 1, log: "監視者の動きを把握した。警戒は上がった。" } },
+      { id: "contact", label: "接触・交渉する", cost: { fatigue: 2, gold: 2 }, effects: { intel: 4, reputation: 1, log: "接触して情報交換した。" } },
+      { id: "evade", label: "離脱する", cost: { fatigue: 2 }, effects: { log: "気配を振り切って離脱した。" } }
+    ]
+  },
+  {
+    eventId: "v4_a046_surrender_value",
+    sourceIds: ["A046"],
+    family: "F04",
+    eventVersion: 1,
+    scope: ["battle","away"],
+    title: "降伏の価値",
+    desc: "戦闘中または直後、相手側から降伏・交換の提案がある。条件次第で戦闘を終わらせられるが、相手の実力は下げない。",
+    weight: 7,
+    cooldownDays: 8,
+    cap: 2,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "accept_terms", label: "条件を飲んで停戦", cost: { gold: 5 }, effects: { reputation: 1, log: "金品と引き換えに停戦した。双方に傷は残った。" } },
+      { id: "hard_bargain", label: "より厳しい条件を突きつける", cost: { fatigue: 2 }, effects: { gold: 10, reputation: -1, danger: 1, log: "厳しい条件を飲ませたが、恨みを買った可能性がある。" } },
+      { id: "refuse", label: "降伏を拒否して戦闘継続", cost: {}, effects: { danger: 2, log: "降伏を拒否し、戦闘を継続する姿勢を示した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b004_enemy_demand",
+    sourceIds: ["B004"],
+    family: "F04",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "敵の要求を聞く時間",
+    desc: "対峙した相手が要求を口にする時間がある。聞く・交渉・無視・攻撃で結果が分かれる。敵を弱体化しない。",
+    weight: 8,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "listen", label: "要求を聞く", cost: {}, effects: { intel: 5, log: "相手の要求と意図を聞いた。情報を得た。" } },
+      { id: "negotiate", label: "交渉する", cost: { gold: 3 }, effects: { reputation: 1, log: "要求の一部をのんで交渉成立。関係がわずかに動いた。" } },
+      { id: "ignore", label: "無視して離れる", cost: { fatigue: 1 }, effects: { log: "要求を無視してその場を離れた。" } },
+      { id: "attack", label: "即座に攻撃する", cost: { fatigue: 2 }, effects: { danger: 2, log: "話を聞かず攻撃に転じた。警戒が高まった。" } }
+    ]
+  },
+  {
+    eventId: "v4_a008_moving_market",
+    sourceIds: ["A008"],
+    family: "F05",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "移動する市場",
+    desc: "巡回商人や移動市が近づいている。取引・情報収集・無視で経済と在庫に影響。",
+    weight: 10,
+    cooldownDays: 5,
+    cap: 4,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "trade", label: "取引する", cost: { gold: 5 }, effects: { materials: { herb: 1 }, food: 2, log: "移動市で物資を調達した。" } },
+      { id: "info", label: "相場と噂を聞く", cost: { gold: 1 }, effects: { intel: 4, rumor: true, log: "相場と近隣の噂を仕入れた。" } },
+      { id: "ignore", label: "通り過ぎる", cost: {}, effects: { log: "移動市を無視して進んだ。" } }
+    ]
+  },
+  {
+    eventId: "v4_b019_scout_trade",
+    sourceIds: ["B019"],
+    family: "F05",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "下見が報われる商売",
+    desc: "事前に相場や需要を調べれば有利な取引ができる機会。下見・即決・見送りの選択。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "scout_first", label: "下見してから買う", cost: { fatigue: 2, gold: 4 }, effects: { materials: { herb: 2 }, gold: 2, log: "下見の結果、有利な価格で物資を得た（実質得）。" } },
+      { id: "buy_now", label: "即決で買う", cost: { gold: 6 }, effects: { materials: { herb: 1 }, log: "即決で購入した。相場並み。" } },
+      { id: "skip", label: "見送る", cost: {}, effects: { log: "取引を見送った。" } }
+    ]
+  },
+  {
+    eventId: "v4_b047_temp_hire",
+    sourceIds: ["B047"],
+    family: "F05",
+    eventVersion: 1,
+    scope: ["town","away"],
+    title: "旅先の臨時雇用",
+    desc: "現地で短期の労働・護衛・運びの仕事が提示される。受けると時間と疲労と金が動く。",
+    weight: 9,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["town","field"], away: null },
+    actions: [
+      { id: "accept", label: "1日働く", cost: { fatigue: 4 }, effects: { gold: 10, time: 1, log: "臨時雇用を1日こなして報酬を得た。" } },
+      { id: "half", label: "半日だけ手伝う", cost: { fatigue: 2 }, effects: { gold: 4, log: "短時間の手伝いをして小金を得た。" } },
+      { id: "refuse", label: "断る", cost: {}, effects: { log: "臨時雇用を断った。" } }
+    ]
+  },
+  {
+    eventId: "v4_a005_battlefield_tools",
+    sourceIds: ["A005"],
+    family: "F06",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "戦場に残る工具",
+    desc: "戦闘や災害の跡地に工具や部品が残っている。回収・鑑定・放置で所持と来歴が変わる。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "salvage", label: "回収する", cost: { fatigue: 3 }, effects: { materials: { scrap: 2 }, log: "使える工具と部品を回収した。" } },
+      { id: "appraise", label: "鑑定してから持ち帰る", cost: { fatigue: 2 }, effects: { materials: { scrap: 1 }, intel: 3, log: "来歴を確認してから回収した。情報も得た。" } },
+      { id: "leave", label: "放置する", cost: {}, effects: { log: "残骸をそのままにした。" } }
+    ]
+  },
+  {
+    eventId: "v4_a012_unreturned_find",
+    sourceIds: ["A012"],
+    family: "F06",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "返さない拾得物",
+    desc: "明らかに持ち主のいる拾得物を見つけた。返還・隠匿・売却で法と噂と所持が分岐する。",
+    weight: 9,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "return", label: "持ち主に返す", cost: { fatigue: 1 }, effects: { reputation: 3, log: "持ち主に返し、信用を得た。" } },
+      { id: "keep", label: "隠して持つ", cost: {}, effects: { gold: 8, reputation: -2, rumor: true, log: "拾得物を隠した。後で噂になるかもしれない。" } },
+      { id: "sell", label: "売却する", cost: {}, effects: { gold: 12, reputation: -3, rumor: true, log: "売却して金を得たが、来歴のリスクが残った。" } }
+    ]
+  },
+  {
+    eventId: "v4_c006_lost_auction",
+    sourceIds: ["C006"],
+    family: "F06",
+    eventVersion: 1,
+    scope: ["town","away"],
+    title: "落とし物の競売",
+    desc: "拾得物や没収品が簡易競売に出ている。入札・観察・無視で所持と噂が動く。",
+    weight: 7,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["town","field"], away: null },
+    actions: [
+      { id: "bid", label: "入札する", cost: { gold: 6 }, effects: { materials: { scrap: 1 }, log: "落札して品物を得た。" } },
+      { id: "observe", label: "様子を見る", cost: {}, effects: { intel: 3, rumor: true, log: "競売の様子と落札者を観察した。" } },
+      { id: "skip", label: "参加しない", cost: {}, effects: { log: "競売に関わらなかった。" } }
+    ]
+  },
+  {
+    eventId: "v4_a047_no_man_tax",
+    sourceIds: ["A047"],
+    family: "F07",
+    eventVersion: 1,
+    scope: ["travel","away"],
+    title: "無主地の国境税",
+    desc: "実効支配が曖昧な境界で通行税や検査を求められる。払う・交渉・迂回・拒否で法的リスクが変わる。",
+    weight: 9,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "pay", label: "税を払う", cost: { gold: 4 }, effects: { pass: true, log: "曖昧な国境税を払い、通行した。" } },
+      { id: "negotiate", label: "権限を問い交渉する", cost: { fatigue: 1 }, effects: { gold: 1, intel: 3, log: "権限の根拠を問い、通行料を減額させた。" } },
+      { id: "detour", label: "迂回する", cost: { fatigue: 4 }, effects: { time: 1, log: "境界を避けて迂回した。" } },
+      { id: "refuse", label: "拒否して強行", cost: { fatigue: 2 }, effects: { reputation: -2, danger: 1, log: "拒否して通ったが、記録に残る可能性がある。" } }
+    ]
+  },
+  {
+    eventId: "v4_b027_route_block",
+    sourceIds: ["B027"],
+    family: "F07",
+    eventVersion: 1,
+    scope: ["travel","away"],
+    title: "経路封鎖の交渉",
+    desc: "道が封鎖・占拠されている。交渉・迂回・強行で通行性と時間・評判が変わる。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "negotiate", label: "封鎖者と交渉する", cost: { gold: 3 }, effects: { pass: true, log: "交渉して一時通行を認めてもらった。" } },
+      { id: "detour", label: "別路を探す", cost: { fatigue: 4, water: 1 }, effects: { time: 1, log: "封鎖を避けて別路を取った。" } },
+      { id: "force", label: "強行突破", cost: { fatigue: 5 }, effects: { injury: 1, reputation: -1, passability: -2, log: "強行したが衝突し、傷と通行性悪化を残した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b005_force_gather",
+    sourceIds: ["B005"],
+    family: "F08",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "強行採取の賭け",
+    desc: "危険を承知で資源を強行採取する機会。成功すれば物資、失敗すれば傷と警戒。",
+    weight: 9,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "force", label: "強行採取する", cost: { fatigue: 5 }, effects: { materials: { herb: 2 }, injury: 1, danger: 1, log: "強行して資源を得たが、軽い傷と警戒が残った。" } },
+      { id: "careful", label: "慎重に採取する", cost: { fatigue: 3, time: 0 }, effects: { materials: { herb: 1 }, log: "時間をかけて安全に採取した。" } },
+      { id: "skip", label: "採取をやめる", cost: {}, effects: { log: "リスクを見て採取を中止した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b025_camp_by_supply",
+    sourceIds: ["B025"],
+    family: "F08",
+    eventVersion: 1,
+    scope: ["camp","away"],
+    title: "保有物資で選ぶ野営",
+    desc: "手持ちの食料・水・道具の量で野営の質と安全が変わる。贅沢・節約・見張り強化の選択。",
+    weight: 10,
+    cooldownDays: 3,
+    cap: 5,
+    eligibility: { phases: ["field","exploration"], away: true, nightOrCamp: true },
+    actions: [
+      { id: "comfort", label: "物資を使って快適に休む", cost: { food: 2, water: 1 }, effects: { fatigue: -4, log: "物資を消費してしっかり休息した。" } },
+      { id: "spare", label: "節約して野営する", cost: { food: 1 }, effects: { fatigue: -1, log: "最小限の消費で野営した。" } },
+      { id: "watch_heavy", label: "見張りを厚くする", cost: { fatigue: 2, food: 1 }, effects: { fatigue: -1, intel: 2, log: "見張りを厚くし、休息は控えめだが安全と情報を得た。" } }
+    ]
+  },
+  {
+    eventId: "v4_b095_enemy_supply",
+    sourceIds: ["B095"],
+    family: "F08",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "敵にも補給が必要",
+    desc: "敵勢力の補給線や野営跡の痕跡がある。妨害・観察・無視で相手の兵站と自軍の危険が変わる。",
+    weight: 8,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "sabotage", label: "補給を妨害する", cost: { fatigue: 4 }, effects: { danger: -1, reputation: -1, log: "敵の補給痕跡を乱した。短期的に脅威が下がったが、恨みの種。" } },
+      { id: "observe", label: "観察して情報を取る", cost: { fatigue: 2 }, effects: { intel: 6, log: "補給ルートと規模を把握した。" } },
+      { id: "ignore", label: "関わらない", cost: {}, effects: { log: "敵の兵站に触れなかった。" } }
+    ]
+  },
+  {
+    eventId: "v4_a036_forge_double",
+    sourceIds: ["A036"],
+    family: "F09",
+    eventVersion: 1,
+    scope: ["town","away"],
+    title: "鍛冶場の二重注文",
+    desc: "鍛冶や工房で納期の重なった注文が発生している。手伝う・交渉・放置で施設状態と報酬が変わる。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["town","field"], away: null },
+    actions: [
+      { id: "help", label: "労働で手伝う", cost: { fatigue: 4 }, effects: { gold: 9, reputation: 1, log: "工房の手伝いをして報酬と信用を得た。" } },
+      { id: "mediate", label: "注文の優先を仲介する", cost: { fatigue: 1 }, effects: { gold: 3, intel: 2, log: "仲介して小金と情報を得た。" } },
+      { id: "leave", label: "関わらない", cost: {}, effects: { log: "工房の都合に介入しなかった。" } }
+    ]
+  },
+  {
+    eventId: "v4_b040_unused_skill",
+    sourceIds: ["B040"],
+    family: "F09",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "使わない技能にも価値",
+    desc: "戦闘以外の技能（修理・鑑定・交渉・治療など）が活きる場面。技能を使うか、力で押し通すか。",
+    weight: 9,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "use_skill", label: "技能で解決する", cost: { fatigue: 2 }, effects: { gold: 6, intel: 3, reputation: 1, log: "非戦闘技能で問題を解決し、報酬と信用を得た。" } },
+      { id: "force", label: "力や金で押し通す", cost: { gold: 4, fatigue: 1 }, effects: { log: "金と力でその場を通した。技能は使わなかった。" } },
+      { id: "skip", label: "見送る", cost: {}, effects: { log: "技能を使う機会を見送った。" } }
+    ]
+  },
+  {
+    eventId: "v4_b006_resource_talk",
+    sourceIds: ["B006"],
+    family: "F10",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "手持ち資源を使う会話",
+    desc: "NPCとの会話で、食料・水・金・情報を差し出すと態度や情報が変わる。",
+    weight: 9,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "offer_food", label: "食料を分けて話す", cost: { food: 1 }, effects: { intel: 5, reputation: 1, log: "食料を分け、打ち解けた話を聞けた。" } },
+      { id: "offer_gold", label: "金で情報を買う", cost: { gold: 3 }, effects: { intel: 6, log: "金を渡して具体的な情報を得た。" } },
+      { id: "talk_only", label: "何も渡さず話す", cost: {}, effects: { intel: 2, log: "普通の会話でわずかな情報を得た。" } }
+    ]
+  },
+  {
+    eventId: "v4_b098_companion_voice",
+    sourceIds: ["B098"],
+    family: "F10",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "仲間の異議申し立て",
+    desc: "同行者や一時的な協力者が、方針に異議を唱える。聞く・却下・折衷で関係と次の行動が変わる。",
+    weight: 7,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "listen", label: "異議を聞いて方針を調整", cost: {}, effects: { reputation: 1, intel: 2, log: "異議を取り入れ、方針を少し変えた。関係が改善した。" } },
+      { id: "override", label: "自分の方針を押し通す", cost: {}, effects: { reputation: -1, log: "異議を却下して自分の判断で進んだ。" } },
+      { id: "compromise", label: "折衷案を取る", cost: { fatigue: 1 }, effects: { log: "双方の意見を折衷して進めた。" } }
+    ]
+  },
+  {
+    eventId: "v4_b051_path_moves",
+    sourceIds: ["B051"],
+    family: "F11",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "選ばなかった道が動く",
+    desc: "プレイヤーが選ばなかった経路や依頼が、世界側で進行している痕跡がある。調査・介入・放置。",
+    weight: 8,
+    cooldownDays: 7,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true, minDay: 3 },
+    actions: [
+      { id: "investigate", label: "痕跡を調べる", cost: { fatigue: 2 }, effects: { intel: 6, rumor: true, log: "選ばなかった道のその後を知った。世界は動いている。" } },
+      { id: "intervene", label: "遅れて介入する", cost: { fatigue: 4, food: 1 }, effects: { gold: 5, reputation: 1, log: "遅れて現場に入り、一部を片付けた。" } },
+      { id: "ignore", label: "放置する", cost: {}, effects: { rumor: true, log: "他の経路の進行を放置した。噂だけが残る。" } }
+    ]
+  },
+  {
+    eventId: "v4_b059_absent_week",
+    sourceIds: ["B059"],
+    family: "F11",
+    eventVersion: 1,
+    scope: ["town","away"],
+    title: "プレイヤー不在の一週間",
+    desc: "拠点や地域で、不在中に起きた変化の報告がある。確認・追認・無視で世界状態の反映が決まる。",
+    weight: 7,
+    cooldownDays: 10,
+    cap: 2,
+    eligibility: { phases: ["town","field"], away: null, minDay: 8 },
+    actions: [
+      { id: "review", label: "変化を確認して記録する", cost: { fatigue: 1 }, effects: { intel: 5, rumor: true, log: "不在中の経済・治安・依頼の変化を確認した。" } },
+      { id: "accept", label: "報告を受け入れて進む", cost: {}, effects: { log: "報告を聞き流さず受け入れ、次の行動に移った。" } },
+      { id: "ignore", label: "深入りしない", cost: {}, effects: { log: "不在中の詳細には踏み込まなかった。" } }
+    ]
+  },
+  {
+    eventId: "v4_b036_battle_env",
+    sourceIds: ["B036"],
+    family: "F12",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "戦闘中の環境利用",
+    desc: "地形・天候・障害物を戦闘や逃走に利用する機会。利用・無視で勝敗以外の結果が変わる。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "use_env", label: "地形を利用する", cost: { fatigue: 2 }, effects: { danger: -1, intel: 2, log: "地形を活かして有利な位置を取った。" } },
+      { id: "weather", label: "天候に任せる", cost: {}, effects: { log: "天候の変化を待ち、無理な行動を避けた。" } },
+      { id: "ignore", label: "環境を無視して正面から", cost: { fatigue: 1 }, effects: { danger: 1, log: "環境を無視して正面対応した。" } }
+    ]
+  },
+  {
+    eventId: "v4_b094_cornered_offer",
+    sourceIds: ["B094"],
+    family: "F12",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "追い詰められた敵の提案",
+    desc: "劣勢の相手から取引・情報・撤退の提案がある。受ける・拒否・追撃で戦後状態が残る。",
+    weight: 8,
+    cooldownDays: 6,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "accept", label: "提案を受ける", cost: {}, effects: { gold: 5, intel: 4, reputation: 1, log: "提案を受け、金と情報を得て戦闘を終わらせた。" } },
+      { id: "refuse", label: "拒否する", cost: {}, effects: { danger: 1, log: "提案を拒否した。相手の態度が硬化した。" } },
+      { id: "pursue", label: "追撃する", cost: { fatigue: 3 }, effects: { gold: 8, injury: 1, reputation: -1, log: "追撃して戦利品を得たが、傷と悪評が残った。" } }
+    ]
+  },
+  {
+    eventId: "v4_b034_invent_solve",
+    sourceIds: ["B034"],
+    family: "F13",
+    eventVersion: 1,
+    scope: ["away","field","town"],
+    title: "別の解決策を発明する依頼",
+    desc: "通常の達成手段以外の解決が可能な依頼・状況。創造的解決・定石・放棄の選択。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration","town"], away: null },
+    actions: [
+      { id: "invent", label: "別解を試みる", cost: { fatigue: 3, food: 1 }, effects: { gold: 8, reputation: 2, intel: 3, log: "想定外の方法で解決し、報酬と評価を得た。" } },
+      { id: "standard", label: "定石どおり進める", cost: { fatigue: 4 }, effects: { gold: 5, log: "通常の手順で達成した。" } },
+      { id: "abandon", label: "諦めて離れる", cost: {}, effects: { log: "別解も定石も取らず、その場を離れた。" } }
+    ]
+  },
+  {
+    eventId: "v4_b078_pay_certainty",
+    sourceIds: ["B078"],
+    family: "F13",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "ランダムが嫌なら代価",
+    desc: "不確実な判定を、時間・物資・金を払って確実性を上げられる場面。",
+    weight: 9,
+    cooldownDays: 4,
+    cap: 4,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "pay_time", label: "時間をかけて確実にする", cost: { fatigue: 2 }, effects: { time: 1, intel: 4, log: "時間をかけて確実な結果を得た。" } },
+      { id: "pay_gold", label: "金で確実性を買う", cost: { gold: 5 }, effects: { intel: 5, log: "金を払って情報と確実な手順を得た。" } },
+      { id: "gamble", label: "そのまま賭ける", cost: { fatigue: 1 }, effects: { gold: 3, danger: 1, log: "不確実なまま進み、結果はまちまちだった。" } }
+    ]
+  },
+  {
+    eventId: "v4_b079_rain_skill",
+    sourceIds: ["B079"],
+    family: "F14",
+    eventVersion: 1,
+    scope: ["away","field"],
+    title: "雨天でだけ使える技能",
+    desc: "雨や特定天候のときだけ有利になる行動・技能の機会。天候を活かすか、普通に進むか。",
+    weight: 8,
+    cooldownDays: 5,
+    cap: 3,
+    eligibility: { phases: ["field","exploration"], away: true },
+    actions: [
+      { id: "use_rain", label: "雨を活かして行動する", cost: { fatigue: 2 }, effects: { materials: { herb: 1 }, intel: 3, log: "雨天を利用して採取と隠蔽移動に成功した。" } },
+      { id: "wait_clear", label: "晴れを待つ", cost: { food: 1 }, effects: { time: 1, log: "天候回復を待ってから行動した。" } },
+      { id: "ignore_weather", label: "天候を無視して進む", cost: { fatigue: 3 }, effects: { log: "雨の中をそのまま進んだ。" } }
+    ]
   }
 ];
 
 function v4EnsureState(){
   if(!S) return;
   if(!S.v4Events || typeof S.v4Events !== "object"){
-    S.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 1 };
+    S.v4Events = { history: [], cooldowns: {}, active: null, lastDrawDay: 0, resolvedTokens: {}, counts: {}, drawSerial:0, version: 2 };
   }
   if(!Array.isArray(S.v4Events.history)) S.v4Events.history = [];
   if(!S.v4Events.cooldowns || typeof S.v4Events.cooldowns !== "object") S.v4Events.cooldowns = {};
@@ -784,6 +1348,7 @@ function v4EnsureState(){
   }
   if(!Number.isSafeInteger(S.v4Events.drawSerial) || S.v4Events.drawSerial<0) S.v4Events.drawSerial=0;
   if(S.v4Events.history.length > 80) S.v4Events.history = S.v4Events.history.slice(-80);
+  if(!Number.isSafeInteger(S.v4Events.version)||S.v4Events.version<2) S.v4Events.version = 2;
 }
 
 function v4IsEligible(def){
@@ -794,9 +1359,7 @@ function v4IsEligible(def){
   if(el.away === false && S.away) return false;
   if(Array.isArray(el.phases) && !el.phases.includes(S.phase||(S.away?'field':'town'))) return false;
   if(el.minDay!=null && (S.day||1)<el.minDay) return false;
-  // There is no generic night clock. A night-only event is legal only during a completed camp night.
   if(el.nightOrCamp===true && S.uxNightEventReadyDay!==S.day)return false;
-  // This deliberately makes fog a boost, not an exclusive climate gate (Phase1).
   if(Array.isArray(el.regions) && !el.regions.includes(activeRegion(S))) return false;
   const cd=v4.cooldowns[def.eventId];
   if(Number.isFinite(cd) && (S.day||1)<cd) return false;
@@ -834,62 +1397,21 @@ function v4CheckAndDraw(){
   if(S.v4Events.active){ lg('【V4】未解決のイベントがあります。先に選択してください。'); v4RenderActive(); return; }
   if(S.v4Events.lastDrawDay===S.day){ lg('【V4】この日の抽選は既に完了。世界の日付が進めば再確認できます。'); return; }
   const eligible=v4GetEligible();
-  // Even if no definition is eligible, record the day once; do not allow repeat-draw exploit.
-  S.v4Events.lastDrawDay=S.day||1;
-  if(eligible.length===0){
+  S.v4Events.lastDrawDay=S.day;
+  if(!eligible.length){
     lg('【V4】適格イベントなし。平穏な時間です。');
-    save();
-    v4RenderActive();return;
+    save(); return;
   }
   const drawn=v4WeightedDraw(eligible);
   if(!drawn){lg('【V4】平穏な時間です。');save();return;}
   const token='v4_'+(S.day||1)+'_'+(++S.v4Events.drawSerial)+'_'+drawn.eventId;
   S.v4Events.active={eventId:drawn.eventId,token,title:drawn.title,desc:drawn.desc,
-    actions:drawn.actions.map(a=>({id:a.id,label:a.label})),day:S.day||1,resolved:false};
+    family:drawn.family,sourceIds:drawn.sourceIds,actions:drawn.actions,day:S.day||1,resolved:false};
   lg('【V4イベント発生】'+drawn.title+' — '+drawn.desc);
+  v4RenderActive();
   save();
-  render();
 }
 
-function v4RenderActive(){
-  const st=document.getElementById('v4EventStatus'),act=document.getElementById('v4EventActive'),acts=document.getElementById('v4EventActions');
-  if(!st||!act||!acts||!S||!S.v4Events)return;
-  const a=S.v4Events.active;
-  if(!a || a.resolved){
-    st.textContent='1日1回、周囲の様子を確かめられます。何も起きないこともあります。行動の結果は記録されます。';
-    act.textContent=''; acts.replaceChildren(); return;
-  }
-  st.textContent='対応を待っている出来事 ／ 旅の'+a.day+'日目';
-  act.textContent='【'+a.title+'】\n'+a.desc;
-  acts.replaceChildren();
-  const def=V4_EVENT_DEFS.find(d=>d.eventId===a.eventId);
-  for(const ch of a.actions||[]){
-    const entry=def?.actions?.find(x=>x.id===ch.id);
-    if(!entry)continue;
-    const box=document.createElement('div');box.className='ux-event-choice';
-    const btn=document.createElement('button');btn.type='button';btn.textContent=ch.label;
-    const missing=v4CostMissing(entry.cost||{});
-    if(missing){btn.disabled=true;btn.title=missing;btn.textContent+='（'+missing+'）';}
-    const impact=document.createElement('div');impact.className='ux-event-impact';impact.textContent=uxEventImpact(def,entry);
-    btn.onclick=()=>v4ResolveChoice(ch.id);
-    box.appendChild(btn);box.appendChild(impact);acts.appendChild(box);
-  }
-}
-
-function uxEventImpact(def,entry){
-  const cost=entry.cost||{},effects=entry.effects||{},parts=[];
-  for(const [key,label] of [['gold','通貨'],['food','食料'],['water','水']])if(cost[key])parts.push(label+'-'+cost[key]);
-  const fatigue=(cost.fatigue||0)+(effects.fatigue||0);
-  if(fatigue)parts.push('疲労'+(fatigue>0?'+':'')+fatigue);
-  if(effects.injury)parts.push('負傷+'+effects.injury);
-  if(effects.time)parts.push('時間+'+effects.time+'日');
-  if(effects.intel)parts.push('地域情報を得る');
-  const leave=(def.eventId==='v4_b058_gate_retreat'&&entry.id==='scout_retreat')||
-    (def.eventId==='v4_c201_fog_checkpoint'&&entry.id==='turn_back');
-  if(leave){parts.push('選択すると自動で拠点へ帰還');if(S.uxFieldJob?.status==='active')parts.push('現地仕事は未納品のまま残り、期限を過ぎると失効');}
-  if(!parts.length)parts.push('明示された資源支出なし（未知の影響は保証できません）');
-  return '分かっている影響：'+parts.join('／');
-}
 function v4CostMissing(cost){
   const res=S?.res||{};
   if((cost.gold||0)>(Number(S?.gold)||0))return '通貨不足';
@@ -897,12 +1419,59 @@ function v4CostMissing(cost){
   if((cost.water||0)>(Number(res.water)||0))return '水不足';
   return '';
 }
+function v4EventImpact(def,entry){
+  const cost=entry.cost||{},effects=entry.effects||{},parts=[];
+  for(const [key,label] of [['gold','通貨'],['food','食料'],['water','水']])if(cost[key])parts.push(label+'-'+cost[key]);
+  const fatigue=(cost.fatigue||0)+(effects.fatigue||0);
+  if(fatigue)parts.push('疲労'+(fatigue>0?'+':'')+fatigue);
+  if(effects.injury)parts.push('負傷+'+effects.injury);
+  if(effects.time)parts.push('時間+'+effects.time+'日');
+  if(effects.gold)parts.push('通貨'+(effects.gold>0?'+':'')+effects.gold);
+  if(effects.food)parts.push('食料'+(effects.food>0?'+':'')+effects.food);
+  if(effects.water)parts.push('水'+(effects.water>0?'+':'')+effects.water);
+  if(effects.passability)parts.push('道路通行性'+(effects.passability>0?'+':'')+effects.passability);
+  if(effects.intel)parts.push('地域情報を得る');
+  if(effects.reputation)parts.push('評判が変化');
+  if(effects.rumor)parts.push('噂が発生');
+  if(effects.danger)parts.push('危険度が変化');
+  const leave=(def?.eventId==='v4_b058_gate_retreat'&&entry.id==='scout_retreat')||
+    (def?.eventId==='v4_c201_fog_checkpoint'&&entry.id==='turn_back');
+  if(leave){parts.push('選択すると自動で拠点へ帰還');if(S.uxFieldJob?.status==='active')parts.push('現地仕事は未納品のまま残り、期限を過ぎると失効');}
+  if(!parts.length)parts.push('明示された資源支出なし（未知の影響は保証できません）');
+  if(effects.injury||effects.reputation<0||effects.danger>1)parts.push('⚠既知リスクあり');
+  return '分かっている影響：'+parts.join('／');
+}
+function v4RenderActive(){
+  const st=document.getElementById('v4EventStatus'),act=document.getElementById('v4EventActive'),acts=document.getElementById('v4EventActions');
+  if(!st||!act||!acts||!S||!S.v4Events)return;
+  const a=S.v4Events.active;
+  if(!a||a.resolved){
+    st.textContent='1日1回、周囲の様子を確かめられます。何も起きないこともあります。行動の結果は記録されます。';
+    act.textContent='';acts.replaceChildren();return;
+  }
+  st.textContent='対応を待っている出来事 ／ 旅の'+(a.day||S.day)+'日目';
+  act.textContent='【'+a.title+'】 ['+(a.family||'')+']\n'+a.desc;
+  acts.replaceChildren();
+  const def=V4_EVENT_DEFS.find(d=>d.eventId===a.eventId);
+  for(const ch of (a.actions||def?.actions||[])){
+    const entry=def?.actions?.find(x=>x.id===ch.id);
+    if(!entry)continue;
+    const box=document.createElement('div');box.className='ux-event-choice';
+    const btn=document.createElement('button');btn.type='button';btn.textContent=entry.label;
+    const missing=v4CostMissing(entry.cost||{});
+    if(missing){btn.disabled=true;btn.title=missing;btn.textContent+='（'+missing+'）';}
+    const impact=document.createElement('div');impact.className='ux-event-impact';impact.textContent=v4EventImpact(def,entry);
+    btn.onclick=()=>v4ResolveChoice(ch.id);
+    box.appendChild(btn);box.appendChild(impact);acts.appendChild(box);
+  }
+}
+
 function v4WorldTimePass(days){
   days=Math.max(0,Math.min(3,Math.floor(Number(days)||0)));
   for(let i=0;i<days;i++){
     S.day++;
     if(S.sim)simAdvance(S,S.day);
-    nationTick(S,1); // existing canonical calendar: no extra v17/v19 tick
+    nationTick(S,1);
     if(typeof updateRivals==='function')updateRivals(S);
   }
 }
@@ -911,7 +1480,7 @@ function v4ApplyRouteEffect(delta){
   const node=ref && S.sim?.nodes?.[ref.region];
   if(!node?.baseState || !Number.isFinite(delta))return false;
   node.baseState.passability=cl((node.baseState.passability||65)+delta,5,100);
-  simRefreshNode(S.sim,node);
+  if(typeof simRefreshNode==='function')simRefreshNode(S.sim,node);
   return true;
 }
 function v4IsResolutionContextValid(def){
@@ -932,7 +1501,6 @@ function v4ResolveChoice(actionId){
   const def=V4_EVENT_DEFS.find(d=>d.eventId===active.eventId);
   const action=def?.actions?.find(a=>a.id===actionId);
   if(!def||!action){lg('【V4】定義・選択肢が見つかりません。');return;}
-  // A stale action cannot be confirmed after the player has changed scene.
   if(!v4IsResolutionContextValid(def)){
     lg('【V4】この場面ではイベントを解決できません。遠征状態を確認してください。');return;
   }
@@ -946,13 +1514,13 @@ function v4ResolveChoice(actionId){
   if(eff.fatigue)S.res.fatigue=cl((S.res.fatigue||0)+eff.fatigue,0,100);
   if(eff.injury)S.res.injury=cl((S.res.injury||0)+eff.injury,0,100);
   if(eff.gold)S.gold=(S.gold||0)+eff.gold;
+  if(eff.food)S.res.food=(S.res.food||0)+eff.food;
+  if(eff.water)S.res.water=(S.res.water||0)+eff.water;
   if(eff.materials && S.materials)for(const [k,v] of Object.entries(eff.materials))if(k in S.materials)S.materials[k]=(S.materials[k]||0)+v;
   const region=activeRegion(S),ri=ensureRegionIntel(S,region);
   if(eff.intel){ri.knowledge=cl((ri.knowledge||0)+eff.intel,0,100);ri.discoveryLevel=cl((ri.discoveryLevel||0)+Math.floor(eff.intel/2),0,100);}
   if(eff.reputation)ri.reputation=cl((ri.reputation||0)+eff.reputation,-50,50);
-  // World-dependent event details, not merely descriptive text.
-  if(def.eventId==='v4_a009_plant_block'&&action.id==='clear')v4ApplyRouteEffect(5);
-  if(def.eventId==='v4_a009_plant_block'&&action.id==='leave')v4ApplyRouteEffect(-3);
+  if(Number.isFinite(eff.passability)) v4ApplyRouteEffect(eff.passability);
   if(eff.danger && S.exploration)S.exploration.danger=cl((S.exploration.danger||1)+eff.danger,1,100);
   if(eff.rumor){
     if(!Array.isArray(S.rumors))S.rumors=[];
@@ -960,13 +1528,11 @@ function v4ResolveChoice(actionId){
     if(S.rumors.length>60)S.rumors=S.rumors.slice(-60);
   }
   if(eff.log)lg('【V4結果】'+eff.log);else lg('【V4結果】'+action.label+' を選択した。');
-  // Commit the receipt before triggering a world tick/return to prevent re-entrance.
   S.v4Events.resolvedTokens[active.token]={day:S.day,actionId};
   S.v4Events.counts[def.eventId]=(S.v4Events.counts[def.eventId]||0)+1;
   S.v4Events.history.push({eventId:active.eventId,sourceIds:def.sourceIds,family:def.family,day:S.day,actionId,
     title:active.title,summary:String(eff.log||action.label).slice(0,120),token:active.token});
   if(S.v4Events.history.length>80)S.v4Events.history.splice(0,S.v4Events.history.length-80);
-  // Receipts are also present in history. Retain a bounded recent set for Save size.
   const tokens=Object.keys(S.v4Events.resolvedTokens);
   for(const key of tokens.slice(0,Math.max(0,tokens.length-120)))delete S.v4Events.resolvedTokens[key];
   S.v4Events.cooldowns[def.eventId]=S.day+(def.cooldownDays||3);
@@ -987,11 +1553,11 @@ function v4ShowHistory(){
 }
 
 function v4OnRenderHook(){
-  // Display-only: never initialize state or draw RNG while rendering.
   if(!S || !S.v4Events)return;
   v4RenderActive();
 }
 /* ========== End V4 Engine ========== */
+
 
 const FORMATIONS={
   "渡し場迎撃隊":["葦盾傭兵","渡し場弓盗","渡し場弓盗","河岸斥候"],
