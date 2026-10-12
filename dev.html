@@ -162,6 +162,18 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 #uxGatherCard .row{flex-wrap:wrap}
 #uxGatherCard .row button{flex:1 1 135px;min-width:0}
 #uxLifePanel[hidden]{display:none}
+
+/* HQ UX P1: read-only first-quest guidance. No game mechanic, RNG or Save changes. */
+#uxFirstJourneyCoach{margin-top:12px;padding:11px;border-radius:10px;border:1px solid #466453;background:#14221d;display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+#uxFirstJourneyCoach .coach-content{flex:1 1 220px;min-width:0}
+#uxFirstJourneyCoach .coach-step{color:#c5e4d4;font-size:12px;font-weight:700;letter-spacing:.01em}
+#uxFirstJourneyCoach .coach-next{font-size:13px;line-height:1.55;margin:5px 0 0;overflow-wrap:anywhere}
+#uxFirstJourneyCoach button{flex:0 1 auto;min-height:44px;max-width:100%;white-space:normal}
+#uxWorldPulseLine{color:#bed5c5;font-size:11px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;margin-top:4px}
+#uxBattleQuickGuide{padding:8px 10px;margin:4px 0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-size:12px;line-height:1.6}
+#uxBattleQuickGuide summary{cursor:pointer;min-height:38px;display:flex;align-items:center;font-weight:600}
+#uxBattleQuickGuide p{margin:6px 0;overflow-wrap:anywhere}
+@media(max-width:480px){#uxFirstJourneyCoach button{flex:1 1 100%}}
 </style>
 </head>
 <body>
@@ -178,6 +190,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <span class="f1hud-item">負傷 <b id="f1HudInjury">—</b></span>
     <span class="f1hud-item">状態 <b id="f1HudFlags">—</b></span>
   </div>
+  <div id="uxWorldPulseLine" role="status" aria-live="off">街道便りを確認中</div>
 </div>
 <nav id="f1Nav" aria-label="主画面">
   <button type="button" data-f1-go="hub" class="f1-active">拠点</button>
@@ -307,6 +320,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div class="ux-eyebrow">今の冒険</div><h2 id="uxAdventureTitle">あなたはどうする？</h2>
     <div id="uxAdventureStory" class="ux-story">冒険の現在地を確認しています。</div>
     <div id="uxAdventureHint" class="ux-hint"></div>
+    <div id="uxFirstJourneyCoach" aria-label="次にすること" role="status" aria-live="off"><div class="coach-content"><div id="uxFirstJourneyStep" class="coach-step">最初の依頼ガイド</div><p id="uxFirstJourneyNext" class="coach-next">次の行動を確認中</p></div><button type="button" id="uxFirstJourneyGo" onclick="uxFirstJourneyGo()">操作場所を見る</button></div>
+    <button type="button" id="v4QuickReturn" onclick="returnTown()" hidden>達成した派生依頼を精算して帰還する</button>
   </div>
   <div class="c ux-lead" id="uxJourneyCard">
     <div class="ux-eyebrow">旅に出る・現地で暮らす・依頼を引き受ける</div>
@@ -360,6 +375,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     </div>
     <div id="quest" class="muted"></div>
     <div id="questOffers" class="g" style="margin-top:8px"></div>
+    <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道事件の派生依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。</p></div>
   </div>
 
 
@@ -440,6 +456,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
       <h2>7区画戦場</h2>
       <span class="s">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
     </div>
+    <details id="uxBattleQuickGuide"><summary>初めての戦闘：7区画の見方（開く）</summary><p>左3区画＝味方側、中央＝接戦地帯、右3区画＝敵側。前衛が近づき、槍は中距離、弓は後方から攻撃します。武器の射程と敵の位置を確認しましょう。</p><p>戦闘開始時は「攻撃/接近の案をセットする」で候補を確認し、問題なければ「選択した行動で1ターン実行」。提案は安全を保証しません。撤退・交渉も状況次第で選べます。</p></details>
     <div id="board" class="lanes"></div>
   </div>
 
@@ -537,6 +554,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
   <div class="c" id="v4AutonomyCard"><h2>訪問した地域の商隊・街道情勢</h2><div id="v4AutonomyStatus" class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
+  <div class="c" id="v4DerivedQuestCard"><h2>街道事件から発生した派生依頼</h2><div id="v4DerivedQuestBoard" class="muted"></div><p class="s">通常の依頼掲示を置き換えません。最大3件。受注は拠点から。</p></div>
+  <div class="c" id="v4PostwarCard"><h2>戦後の記録（訪問済み）</h2><div id="v4PostwarStatus" class="muted" style="white-space:pre-wrap"></div></div>
   <details class="c" id="simPanel">
     <summary>世界の詳しい記録と検証機能（開発用）</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
@@ -1384,6 +1403,13 @@ function v4EnsureAutonomy(state){
   }
   // Cap agents
   if(a.agents.length>36)a.agents=a.agents.slice(0,36);
+  if(!Array.isArray(a.derivedQuests))a.derivedQuests=[];
+  if(!Array.isArray(a.derivedHistory))a.derivedHistory=[];
+  if(typeof v4CapDerivedQuests==='function')v4CapDerivedQuests(a);
+  else {
+    if(a.derivedQuests.length>40)a.derivedQuests=a.derivedQuests.slice(-40);
+    if(a.derivedHistory.length>40)a.derivedHistory=a.derivedHistory.slice(-40);
+  }
   return a;
 }
 
@@ -1563,6 +1589,7 @@ function v4AutonomyTick(state,day){
       }
     }
   }
+  try{ v4AfterAutonomyIncidents(state, day); }catch(e){}
   return true;
 }
 
@@ -1583,7 +1610,7 @@ function v4RenderAutonomous(){
     const here=a.agents.filter(ag=>ag.region===(S.world?.region)&&ag.status!=='idle').slice(0,4);
     if(here.length) extra='\\n現地主体: '+here.map(ag=>ag.role+'(force'+ag.force+'/金'+ag.gold+'/'+ag.status+')').join(', ');
   }
-  node.textContent=(list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\\n'):
+  node.textContent=(list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\n'):
     '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。')+extra;
 }
 
@@ -1608,7 +1635,8 @@ function v4BattleForceRatio(){
   const enP=living(S.en).reduce((s,u)=>s+(u.hp||0)+((u.weapon&&u.weapon.atk)||0),0);
   if(enP<=0) return 99;
   const reg=activeRegion(S);
-  const localRaider=S.v4Events?.autonomy?.agents?.find(a=>a.role==='raider'&&a.region===reg);
+  const localRaider=S.v4EncounterAgentVerified===true?
+    v4FindAgent(S,S.v4EncounterAgentId):null;
   const morale=localRaider&&Number.isFinite(localRaider.morale)?localRaider.morale:55;
   return Math.max(0.1,(allyP/Math.max(1,enP))*(1+(55-morale)/250));
 }
@@ -1650,6 +1678,9 @@ function v4ResolveBattleNeg(optId){
   S.v4BattleNegUsed=(S.v4BattleNegUsed||0)+1;
   const ratio=v4BattleForceRatio();
   const region=typeof activeRegion==='function'?activeRegion(S):(S.world&&S.world.region)||'';
+  const combatLinkedId=(S.v4EncounterAgentVerified===true&&S.v4EncounterBattleId&&
+    Array.isArray(S.en)&&S.en.length&&S.en.every(e=>e.v4AgentId===S.v4EncounterAgentId&&
+      e.v4BattleId===S.v4EncounterBattleId))?S.v4EncounterAgentId:null;
   let success=false, log='', goldCost=0, postwar=null;
 
   if(optId==='cease_pay'){
@@ -1712,20 +1743,21 @@ function v4ResolveBattleNeg(optId){
   if(postwar){
     const a=v4EnsureAutonomy(S);
     if(a){
+      postwar.battleId=postwar.battleId||('b_'+S.day+'_'+(S.v4BattleNegUsed||0));
+      const recordedId=S.v4EncounterAgentId||null;
+      const actual=v4FindAgent(S,recordedId);
+      postwar.agentId=(combatLinkedId===recordedId&&actual&&actual.region===region&&
+        S.v4EncounterRegion===region)?actual.id:null;
       a.postwar.push({...postwar, id:'pw_'+S.day+'_'+(a.postwar.length+1)});
       if(a.postwar.length>40)a.postwar=a.postwar.slice(-40);
     }
+    try{ v4ApplyPostwarToAgents(S, postwar); }catch(e){}
     const ri=typeof ensureRegionIntel==='function'?ensureRegionIntel(S,region):null;
     if(ri){
       if(postwar.kind==='ceasefire'||postwar.kind==='surrender') ri.reputation=cl((ri.reputation||0)+1,-50,50);
       if(postwar.kind==='mutual_withdraw') ri.reputation=cl((ri.reputation||0)-0,-50,50);
     }
-    // Affect local raider/guard agents if any
-    if(a&&a.agents){
-      a.agents.filter(ag=>ag.region===region&&ag.role==='raider').forEach(ag=>{
-        if(postwar.kind==='surrender'||postwar.kind==='ceasefire'){ ag.morale=Math.max(10,(ag.morale||50)-8); ag.force=Math.max(2,(ag.force||10)-2); }
-      });
-    }
+    // Do not alter the region's unrelated persistent NPCs for an unverified enemy.
   }
 
   if(!S.battle){
@@ -1753,6 +1785,413 @@ function v4OnBattleRenderHook(){
   else { btn.hidden=true; }
 }
 
+/* ========== Phase3 Stage3-4 FixR2: NPC link / Derived Quests / UI / Causal (U01-U14) ========== */
+function v4RoleJa(role){
+  return role==='merchant'?'商人':role==='raider'?'盗賊':role==='guard'?'護衛':'勢力';
+}
+function v4FindAgent(state, id){
+  if(!id)return null;
+  const a=state?.v4Events?.autonomy?.agents;
+  if(!Array.isArray(a))return null;
+  return a.find(x=>x&&x.id===id)||null;
+}
+function v4LocalAgents(state, region, role){
+  const a=state?.v4Events?.autonomy?.agents;
+  if(!Array.isArray(a))return [];
+  return a.filter(x=>x&&x.region===region&&(!role||x.role===role)&&x.status!=='idle');
+}
+function v4KnownRegion(state, region){
+  if(!state||!region)return false;
+  if(state.world?.region===region)return true;
+  if(state.away&&state.travelDest===region)return true;
+  if(state.regionIntel?.[region]?.visited===true)return true;
+  return false;
+}
+function v4HasDerivedRumor(state,q){
+  if(!state||!q||!Array.isArray(state.rumors))return false;
+  const day=Number(state.day)||1;
+  return state.rumors.some(r=>r&&r.id===q.causeId&&r.regionId===q.region&&
+    Number.isFinite(Number(r.heardDay))&&Number(r.heardDay)<=day&&
+    (r.expiresDay==null||Number(r.expiresDay)>=day));
+}
+function v4ReturnEscrow(state,q,reason){
+  if(!q||!q.escrowed||q._rewarded)return !q?.escrowed;
+  const payer=v4FindAgent(state,q.payerId),amount=Number(q.rewardGold)||0;
+  if(!payer || !Number.isFinite(amount) || amount<0 || (Number(payer._escrow)||0)<amount){
+    // Do not mint a refund. Persist unsettled obligation for repair, not lost money.
+    q.refundPending=true;q.refundReason=reason||'unresolved';return false;
+  }
+  payer._escrow-=amount;payer.gold=(Number(payer.gold)||0)+amount;
+  q.escrowed=false;q.refundPending=false;
+  return true;
+}
+function v4CloseDerived(state,q,status,reason){
+  if(!q||q._rewarded)return false;
+  v4ReturnEscrow(state,q,reason||status);
+  q.status=status;q.closedDay=Number(state.day)||1;q.closeReason=reason||status;
+  v4CapDerivedQuests(v4EnsureAutonomy(state));
+  return true;
+}
+function v4LinkedEscortEvidence(state,q){
+  const ag=v4FindAgent(state,state?.v4EncounterAgentId);
+  if(!q||!ag||ag.role!=='raider'||ag.region!==q.region||
+    state.v4EncounterAgentVerified!==true||state.v4EscortBattleQuestId!==q.id||
+    !state.v4EncounterBattleId||state.v4EncounterRegion!==q.region)return false;
+  // Real encounter actors must be the same named agent, not an unrelated animal battle.
+  return Array.isArray(state.en)&&state.en.length>0&&state.en.every(e=>
+    e&&e.v4AgentId===ag.id&&e.v4BattleId===state.v4EncounterBattleId&&Number(e.hp)<=0);
+}
+function v4BeginLinkedEscortBattle(state){
+  // Context is established before enemies are generated. Ordinary random battles remain unlinked.
+  state.v4EncounterAgentId=null;state.v4EncounterAgentVerified=false;
+  state.v4EscortBattleQuestId=null;state.v4EncounterBattleId=null;state.v4EncounterRegion=null;
+  const q=state?.v4Events?.autonomy?.derivedQuests?.find(q=>q&&q.id===state.quest?.derivedId);
+  if(!q||q.status!=='active'||q.dtype!=='護衛輸送'||q.region!==activeRegion(state))return false;
+  const raider=v4LocalAgents(state,q.region,'raider').find(x=>x.status==='active'&&(Number(x.force)||0)>0);
+  if(!raider)return false;
+  const kinds=['山賊弓手','盾持ち傭兵','平原斥候'];
+  const count=Math.max(2,Math.min(6,Math.ceil((Number(raider.force)||12)/6)));
+  const battleId='v4_escort_'+String(q.id)+'_'+String(state.day)+'_'+String(state.clearCount||0);
+  state.en=Array.from({length:count},(_,i)=>{
+    const enemy=makeEnemyUnit(kinds[i%kinds.length],i);
+    enemy.v4AgentId=raider.id;enemy.v4BattleId=battleId;
+    return enemy;
+  });
+  state.v4EncounterAgentId=raider.id;state.v4EncounterAgentVerified=true;
+  state.v4EscortBattleQuestId=q.id;state.v4EncounterBattleId=battleId;state.v4EncounterRegion=q.region;
+  lg('【護衛輸送】現地盗賊勢力（'+raider.id+'）による商隊襲撃を確認。戦闘の成否が護送結果に影響します。');
+  return true;
+}
+function v4MarkDerivedProgress(state,kind){
+  if(!state?.quest?.derivedId||!state.away||state.battle)return false;
+  const a=v4EnsureAutonomy(state),q=a.derivedQuests.find(x=>x.id===state.quest.derivedId);
+  if(!q||q.status!=='active'||q._rewarded)return false;
+  const region=activeRegion(state),day=Number(state.day)||1;
+  if(region!==q.region||day>Number(q.dueDay)||!Number.isFinite(day))return false;
+  const safeEscort=(q.dtype==='護衛輸送'&&kind==='escort_safe_arrival'&&
+    state.uxJourney?.mode==='quest'&&state.uxJourney?.region===q.region&&
+    Number.isFinite(Number(state.uxJourney.departDay))&&
+    !v4LocalAgents(state,q.region,'raider').some(ag=>ag.status==='active'&&(Number(ag.force)||0)>0)&&
+    !!v4FindAgent(state,q.payerId));
+  const valid=(q.dtype==='護衛輸送'&&kind==='battle_victory'&&v4LinkedEscortEvidence(state,q))||safeEscort||
+    (q.dtype==='調査回収'&&kind==='exploration')||
+    (q.dtype==='資材補給'&&kind==='gather'&&
+      (Number(state.quest.uxGatherProgress)||0)>=2&&
+      ((Number(state.materials?.herb)||0)+(Number(state.materials?.scrap)||0))>=Number(q.needGoods||1));
+  if(!valid)return false;
+  if(!q.completedDay){q.completedDay=day;q.completedRegion=region;q.completedBy=kind;}
+  state.quest.done=1;
+  return true;
+}
+
+function v4ReconcilePendingEscrow(state){
+  const a=state?.v4Events?.autonomy;
+  if(!a||!Array.isArray(a.derivedHistory))return 0;
+  let count=0;
+  for(const q of a.derivedHistory){
+    if(q&&q.refundPending&&q.escrowed&&!q._rewarded&&v4ReturnEscrow(state,q,'retry_after_recovery'))count++;
+  }
+  return count;
+}
+function v4RecoverOrphanedDerived(state){
+  const a=state?.v4Events?.autonomy;
+  if(!a?.derivedQuests)return;
+  for(const q of [...a.derivedQuests]){
+    if(q?.status!=='active')continue;
+    if(state.quest?.derivedId===q.id&&state.quest.derived)continue;
+    // Incompatible older saves: no player quest can ever settle this active contract.
+    // Preserve the record, refund only existing escrow; never mint money.
+    v4CloseDerived(state,q,'failed','orphaned_saved_quest');
+  }
+}
+function v4HasActiveUndertaking(){
+  if(!S)return false;
+  if(S.away||S.battle)return true;
+  if(S.quest&&S.quest.derived&&S.quest.derivedId){
+    const a=S.v4Events?.autonomy;
+    const q=(a?.derivedQuests||[]).find(x=>x&&x.id===S.quest.derivedId);
+    if(q&&(q.status==='active'||q.status==='done'))return true;
+  }
+  return false;
+}
+function v4EventAgentContext(def){
+  if(!S||!def)return null;
+  const region=typeof activeRegion==='function'?activeRegion(S):(S.world&&S.world.region)||'';
+  const fam=def.family||'';
+  let role=null;
+  if(fam==='F05'||/market|trade|hire|forge/i.test(def.eventId||''))role='merchant';
+  else if(fam==='F07'||/checkpoint|block|tax|fog/i.test(def.eventId||''))role='guard';
+  else if(fam==='F03'||fam==='F11'||/raid|robber|watcher/i.test(def.eventId||''))role='raider';
+  const locals=v4LocalAgents(S, region, role);
+  if(!locals.length)return {agentId:null, label:'未確認の噂', verified:false, region};
+  const ag=locals[0];
+  return {agentId:ag.id, label:v4RoleJa(ag.role), verified:true, region, force:ag.force, morale:ag.morale, gold:ag.gold};
+}
+function v4ApplyEventToAgent(state, agentId, eff, actionId){
+  const ag=v4FindAgent(state, agentId);
+  if(!ag)return;
+  if(!ag.relations)ag.relations={player:0};
+  if(eff&&eff.reputation){
+    ag.relations.player=Math.max(-20,Math.min(20,(Number(ag.relations.player)||0)+Math.sign(eff.reputation)));
+  }
+  if(actionId==='intervene'||actionId==='help'||actionId==='accept'||actionId==='negotiate'){
+    if(ag.role==='merchant'||ag.role==='guard'){
+      ag.relations.player=Math.max(-20,Math.min(20,(Number(ag.relations.player)||0)+1));
+    }
+  }
+  if(actionId==='force'||actionId==='attack'||actionId==='leverage'){
+    ag.relations.player=Math.max(-20,Math.min(20,(Number(ag.relations.player)||0)-1));
+    if(ag.role==='raider')ag.morale=Math.max(10,(Number(ag.morale)||50)-3);
+  }
+  // F05 gold transfers are settled at v4ResolveChoice, never twice here.
+}
+function v4PickPayer(state, region, preferredId){
+  const approved=ag=>ag&&ag.region===region&&ag.status!=='idle'&&
+    (ag.role==='merchant'||ag.role==='guard')&&(Number(ag.gold)||0)>=3;
+  const payer=v4FindAgent(state,preferredId);
+  if(approved(payer))return payer;
+  const cands=v4LocalAgents(state,region,null).filter(approved);
+  cands.sort((a,b)=>(Number(b.gold)||0)-(Number(a.gold)||0));
+  return cands[0]||null;
+}
+
+function v4CapDerivedQuests(a){
+  if(!a)return;
+  if(!Array.isArray(a.derivedQuests))a.derivedQuests=[];
+  if(!Array.isArray(a.derivedHistory))a.derivedHistory=[];
+  const seen=new Set(a.derivedHistory.filter(Boolean).map(q=>q.id));
+  const live=[];
+  for(const q of a.derivedQuests){
+    if(!q)continue;
+    if(q.status==='open'||q.status==='active'){live.push(q);continue;}
+    if(!seen.has(q.id)){a.derivedHistory.push({...q});seen.add(q.id);}
+  }
+  // Never discard active quests, including old-save anomalies. Do not hide open quests behind done.
+  a.derivedQuests=live;
+  // Preserve pending refunds beyond the normal bounded settled history. Never discard money claims.
+  const pending=a.derivedHistory.filter(q=>q&&q.refundPending&&q.escrowed);
+  const settled=a.derivedHistory.filter(q=>!q||!q.refundPending||!q.escrowed);
+  a.derivedHistory=[...settled.slice(-80),...pending];
+}
+
+function v4SpawnDerivedFromIncident(state, incident){
+  const a=v4EnsureAutonomy(state);
+  if(!a||!incident||!incident.id)return null;
+  if((a.derivedQuests||[]).some(q=>q&&q.causeId===incident.id))return null;
+  if((a.derivedHistory||[]).some(q=>q&&q.causeId===incident.id))return null;
+  const live=(a.derivedQuests||[]).filter(q=>q&&(q.status==='open'||q.status==='active'));
+  if(live.length>=3)return null;
+  const day=Number(incident.day)||Number(state.day)||1;
+  const region=incident.region;
+  let dtype=null, title='', rewardGold=6, needGoods=0, daysLimit=12, desc='';
+  if(incident.kind==='raid'||incident.kind==='trade_fail'){
+    dtype='調査回収'; title=region+'の襲撃跡調査・回収';
+    desc='街道が被害を受けた。調査または物資回収（非戦闘可）。'; rewardGold=8;
+  } else if(incident.kind==='delivery'||incident.kind==='escort'){
+    dtype='護衛輸送'; title=region+'への護送・輸送支援';
+    desc='商隊護衛または物資輸送の人手を求めている。'; rewardGold=10;
+  } else if(incident.kind==='repel'||incident.kind==='underfunded'){
+    dtype='資材補給'; title=region+'の街道修繕・資材補給';
+    desc='資材不足。薬草や端材の納入で復旧を助けてほしい（非戦闘）。'; rewardGold=7; needGoods=1;
+  } else return null;
+  // Optional agent-specific extermination quests are disabled until combat binds a verified agentId.
+  const payer=v4PickPayer(state, region, incident.agentId);
+  if(!payer)return null;
+  const canPay=Math.max(0, Number(payer.gold)||0);
+  if(canPay<3)return null;
+  rewardGold=Math.min(rewardGold, canPay);
+  payer.gold=canPay-rewardGold;
+  payer._escrow=(Number(payer._escrow)||0)+rewardGold;
+  const rawCause=String(incident.id);
+  const baseId='dq_'+day+'_'+rawCause.slice(0,128);
+  let derivedId=baseId, suffix=0;
+  while([...a.derivedQuests,...a.derivedHistory].some(q=>q&&q.id===derivedId))derivedId=baseId+'_'+(++suffix);
+  const q={
+    id:derivedId,
+    dtype, title, desc, region,
+    causeId:incident.id, agentId:incident.agentId||null, payerId:payer.id,
+    rewardGold, needGoods, status:'open', createdDay:day, dueDay:day+daysLimit,
+    derived:true, series:'v4_auto_'+dtype, stage:1, escrowed:true, _rewarded:false
+  };
+  if(!Array.isArray(a.derivedQuests))a.derivedQuests=[];
+  a.derivedQuests.push(q);
+  v4CapDerivedQuests(a);
+  return q;
+}
+function v4AfterAutonomyIncidents(state, day){
+  const a=v4EnsureAutonomy(state);
+  if(!a)return;
+  const recent=(a.history||[]).filter(h=>h&&h.day===day);
+  for(const inc of recent){try{v4SpawnDerivedFromIncident(state,inc);}catch(e){console.warn('derived spawn',e);}}
+  for(const q of [...a.derivedQuests]){
+    if(!q||!Number(q.dueDay)||day<=q.dueDay)continue;
+    if(q.status==='open'||(q.status==='active'&&!q.completedDay)){
+      v4CloseDerived(state,q,'expired','due_day');
+    }
+  }
+  v4CapDerivedQuests(a);
+}
+
+function v4AcceptDerivedQuest(qid){
+  if(!S||S.away||S.battle){lg('【派生依頼】拠点でのみ受注できます。');return false;}
+  const a=v4EnsureAutonomy(S),q=(a.derivedQuests||[]).find(x=>x&&x.id===qid&&x.status==='open');
+  if(!q){lg('【派生依頼】対象がないか、処理済みです。');return false;}
+  if(Number(q.dueDay)&&S.day>q.dueDay){v4CloseDerived(S,q,'expired','late_accept');lg('【派生依頼】期限切れ。');render();return false;}
+  if(!v4KnownRegion(S,q.region)){lg('【派生依頼】未確認の噂です。依頼の出所を把握するまで受注できません。');return false;}
+  if(v4HasActiveUndertaking()||a.derivedQuests.some(x=>x&&x.status==='active')){
+    lg('【派生依頼】別の依頼が進行中です。');return false;
+  }
+  const payer=v4FindAgent(S,q.payerId);
+  if(!payer||payer.region!==q.region||!q.escrowed||
+      (Number(payer._escrow)||0)<Number(q.rewardGold)||q._rewarded){
+    lg('【派生依頼】出資保証を確認できません。');return false;
+  }
+  q.status='active';q.acceptedDay=S.day;
+  const typeMap={'護衛輸送':'護衛','調査回収':'探索','資材補給':'採取'};
+  // Optional raider extermination remains disabled until encounter agent binding exists.
+  if(!typeMap[q.dtype]){v4CloseDerived(S,q,'failed','unsupported_target');return false;}
+  S.quest={type:typeMap[q.dtype],title:q.title,place:q.region,done:0,derived:true,
+    derivedId:q.id,agentId:q.agentId,payerId:q.payerId,causeId:q.causeId,
+    rewardGold:q.rewardGold,needGoods:q.needGoods||0,mon:null,n:2,
+    branchRewarded:false,v4DerivedNoNormalReward:true};
+  S.travelDest=q.region;
+  lg('【派生依頼】受注：'+q.title+'（期限 Day'+q.dueDay+'／保証金 '+q.rewardGold+'）');
+  render();save();return true;
+}
+
+function v4DeclineDerivedQuest(qid){
+  if(!S)return;
+  const a=v4EnsureAutonomy(S),q=(a.derivedQuests||[]).find(x=>x&&x.id===qid);
+  if(!q||q.status!=='open')return;
+  v4CloseDerived(S,q,'declined','declined');
+  lg('【派生依頼】辞退：'+q.title);render();save();
+}
+
+function v4CompleteDerivedQuest(state,outcome,opts){
+  if(!state?.quest?.derivedId)return false;
+  const a=v4EnsureAutonomy(state),q=a.derivedQuests.find(x=>x&&x.id===state.quest.derivedId);
+  if(!q||q.status!=='active'||q._rewarded)return false;
+  if(outcome!=='success')return v4CloseDerived(state,q,'failed',outcome||'retreat');
+  const day=Number(state.day)||1,completed=Number(q.completedDay);
+  const validKind={"護衛輸送":"battle_victory","調査回収":"exploration","資材補給":"gather"}[q.dtype];
+  // 'done' is a UI flag, never proof of achievement. Return-town cannot bypass validation.
+  if(!state.quest.done||!completed||completed>q.dueDay||completed<q.acceptedDay||
+      q.completedRegion!==q.region||
+      !(q.completedBy===validKind||(q.dtype==='護衛輸送'&&q.completedBy==='escort_safe_arrival'))){return false;}
+  const payer=v4FindAgent(state,q.payerId),pay=Number(q.rewardGold);
+  if(!payer||payer.region!==q.region||!(payer.role==='merchant'||payer.role==='guard')||
+      !q.escrowed||!Number.isFinite(pay)||pay<0||(Number(payer._escrow)||0)<pay)return false;
+  if(q.needGoods>0){
+    const mats=state.materials||{},have=(Number(mats.herb)||0)+(Number(mats.scrap)||0);
+    if(have<q.needGoods)return false;
+  }
+  // All conditions checked. Commit as one synchronous transaction.
+  if(q.needGoods>0){
+    let remain=q.needGoods;
+    for(const k of ['herb','scrap']){const n=Math.min(Number(state.materials[k])||0,remain);state.materials[k]-=n;remain-=n;}
+    payer.goods=(Number(payer.goods)||0)+q.needGoods;
+  }
+  payer._escrow-=pay;q.escrowed=false;q._rewarded=true;
+  state.gold=(Number(state.gold)||0)+pay;
+  q.status='done';q.closedDay=day;q.payActual=pay;
+  const rec=a.regions[q.region]||{marketStress:0,security:50,deliveries:0,losses:0};
+  if(q.dtype==='護衛輸送'||q.dtype==='資材補給'){
+    rec.marketStress=Math.max(-18,(Number(rec.marketStress)||0)-2);
+    rec.security=Math.min(100,(Number(rec.security)||50)+3);
+    rec.deliveries=(Number(rec.deliveries)||0)+1;
+  }
+  if(q.dtype==='調査回収')rec.security=Math.min(100,(Number(rec.security)||50)+2);
+  a.regions[q.region]=rec;
+  const ri=typeof ensureRegionIntel==='function'?ensureRegionIntel(state,q.region):null;
+  if(ri)ri.reputation=Math.max(-50,Math.min(50,(Number(ri.reputation)||0)+2));
+  state.quest={...state.quest,done:1,v4DerivedNoNormalReward:true,branchRewarded:true};
+  v4CapDerivedQuests(a);
+  lg('【派生依頼】完了：'+q.title+'／預託金から報酬 '+pay);
+  return true;
+}
+
+function v4ApplyPostwarToAgents(state, postwar){
+  if(!state||!postwar)return;
+  const a=v4EnsureAutonomy(state);
+  if(!a)return;
+  const id=postwar.agentId||null;
+  if(!id)return;
+  const ag=v4FindAgent(state, id);
+  if(!ag)return;
+  if(!ag.relations)ag.relations={player:0};
+  if(postwar.kind==='ceasefire'||postwar.kind==='surrender'){
+    if(ag.role==='raider'){
+      ag.relations.player=Math.max(-20,Math.min(20,(Number(ag.relations.player)||0)-1));
+      ag.morale=Math.max(10,(Number(ag.morale)||50)-5);
+    } else if(ag.role==='guard'){
+      ag.relations.player=Math.max(-20,Math.min(20,(Number(ag.relations.player)||0)+1));
+    }
+  }
+}
+function v4RenderDerivedQuests(){
+  const host=document.getElementById('v4DerivedQuestBoard');
+  const hostAdv=document.getElementById('v4DerivedQuestBoardAdv');
+  const targets=[host,hostAdv].filter(Boolean);
+  if(!targets.length||!S)return;
+  const a=S.v4Events?.autonomy;
+  for(const t of targets)t.replaceChildren();
+  if(!a){
+    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='派生依頼は世界の事件から発生します。';t.appendChild(p);}
+    return;
+  }
+  const open=(a.derivedQuests||[]).filter(q=>q&&(q.status==='open'||q.status==='active')&&
+      (q.status==='active'||v4KnownRegion(S,q.region)||v4HasDerivedRumor(S,q)))
+    .sort((x,y)=>(x.status==='active'?0:1)-(y.status==='active'?0:1));
+  if(!open.length){
+    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='現在、掲示中の派生依頼はありません。';t.appendChild(p);}
+    return;
+  }
+  for(const q of open.slice(0,3)){
+    const known=v4KnownRegion(S,q.region);
+    for(const t of targets){
+      const card=document.createElement('div');card.className='c';card.style.marginBottom='8px';
+      const h=document.createElement('div');
+      if(!known&&q.status==='open'){
+        h.innerHTML='<b>遠方の依頼の噂</b> <span class="muted">[伝聞]</span>';
+        card.appendChild(h);
+        const d=document.createElement('p');d.className='s';
+        d.textContent='未訪問の地域で人手を求めているという話がある。詳細は現地か信頼できる伝聞が必要。';
+        card.appendChild(d);
+      } else {
+        const b=document.createElement('b');b.textContent=String(q.title||'');
+        h.appendChild(b);
+        const sp=document.createElement('span');sp.className='muted';
+        sp.textContent=' ['+q.dtype+'／'+(q.status==='active'?'進行中':q.status==='done'?'達成・帰還可':'受注可')+']';
+        h.appendChild(sp); card.appendChild(h);
+        const d=document.createElement('p');d.className='s';
+        d.textContent=(q.desc||'')+' 期限Day'+q.dueDay+'／報酬'+q.rewardGold+(q.needGoods?'／資材'+q.needGoods:'')+'／'+q.region;
+        card.appendChild(d);
+      }
+      if(q.status==='open'&&known&&!S.away&&!S.battle){
+        const row=document.createElement('div');row.style.display='flex';row.style.gap='8px';row.style.flexWrap='wrap';
+        const acc=document.createElement('button');acc.type='button';acc.textContent=known?'受注する':'噂を手がかりに受注';
+        acc.style.minHeight='44px'; acc.onclick=()=>v4AcceptDerivedQuest(q.id);
+        const dec=document.createElement('button');dec.type='button';dec.textContent='辞退';dec.style.minHeight='44px';
+        dec.onclick=()=>v4DeclineDerivedQuest(q.id);
+        row.appendChild(acc);row.appendChild(dec);card.appendChild(row);
+      }
+      t.appendChild(card);
+    }
+  }
+}
+function v4RenderWorldNpcPanel(){
+  const qret=document.getElementById('v4QuickReturn');
+  if(qret)qret.hidden=!(S?.away&&!S?.battle&&S?.quest?.derived&&S?.quest?.done&&!S?.v4Events?.active);
+  try{v4RenderAutonomous();}catch(e){}
+  try{v4RenderDerivedQuests();}catch(e){}
+  const post=document.getElementById('v4PostwarStatus');
+  if(post&&S?.v4Events?.autonomy){
+    const known=(S.v4Events.autonomy.postwar||[]).filter(p=>p&&v4KnownRegion(S,p.region)).slice(-5);
+    post.textContent=known.length?known.map(p=>'Day'+p.day+'／'+p.region+'：'+p.kind+(p.agentId?'／'+p.agentId:'')).join('\n'):'訪問地域の戦後記録はまだありません。';
+  }
+}
+
+
 function v4EnsureState(){
   if(!S) return;
   if(!S.v4Events || typeof S.v4Events !== "object"){
@@ -1769,6 +2208,8 @@ function v4EnsureState(){
   if(S.v4Events.history.length > 80) S.v4Events.history = S.v4Events.history.slice(-80);
   if(!Number.isSafeInteger(S.v4Events.version)||S.v4Events.version<2) S.v4Events.version = 2;
   v4EnsureAutonomy(S);
+  v4RecoverOrphanedDerived(S);
+  v4ReconcilePendingEscrow(S);
 }
 
 function v4IsEligible(def){
@@ -1827,9 +2268,17 @@ function v4CheckAndDraw(){
   const drawn=v4WeightedDraw(eligible);
   if(!drawn){lg('【V4】平穏な時間です。');save();return;}
   const token='v4_'+(S.day||1)+'_'+(++S.v4Events.drawSerial)+'_'+drawn.eventId;
-  S.v4Events.active={eventId:drawn.eventId,token,title:drawn.title,desc:drawn.desc,
-    family:drawn.family,sourceIds:drawn.sourceIds,actions:drawn.actions,day:S.day||1,resolved:false};
-  lg('【V4イベント発生】'+drawn.title+' — '+drawn.desc);
+  let _desc=drawn.desc, _actx=null;
+  try{
+    _actx=(typeof v4EventAgentContext==='function')?v4EventAgentContext(drawn):null;
+    if(_actx&&_actx.verified)_desc+= '（関係：'+_actx.label+'）';
+    else if(_actx&&!_actx.verified)_desc+= '（未確認の噂）';
+  }catch(e){}
+  S.v4Events.active={eventId:drawn.eventId,token,title:drawn.title,desc:_desc,
+    family:drawn.family,sourceIds:drawn.sourceIds,actions:drawn.actions,day:S.day||1,resolved:false,
+    agentId:_actx?.verified?_actx.agentId:null,region:_actx?.region||activeRegion(S),
+    verified:!!_actx?.verified};
+  lg('【V4イベント発生】'+drawn.title+' — '+_desc);
   v4RenderActive();
   save();
 }
@@ -1881,7 +2330,7 @@ function v4RenderActive(){
     if(!entry)continue;
     const box=document.createElement('div');box.className='ux-event-choice';
     const btn=document.createElement('button');btn.type='button';btn.textContent=entry.label;
-    const missing=v4CostMissing(entry.cost||{});
+    const missing=v4CostMissing(entry.cost||{})||v4F05SettlementIssue(S,a,entry);
     if(missing){btn.disabled=true;btn.title=missing;btn.textContent+='（'+missing+'）';}
     const impact=document.createElement('div');impact.className='ux-event-impact';impact.textContent=v4EventImpact(def,entry);
     btn.onclick=()=>v4ResolveChoice(ch.id);
@@ -1912,6 +2361,23 @@ function v4IsResolutionContextValid(def){
   if(el.away===false && S.away)return false;
   return true;
 }
+function v4F05SettlementIssue(state,active,action){
+  if(!state||!active||active.family!=='F05')return null;
+  const cost=action.cost||{},eff=action.effects||{};
+  const goodsNeed=Math.max(0,Number(eff.food)||0)+
+    Object.values(eff.materials||{}).reduce((n,x)=>n+Math.max(0,Number(x)||0),0);
+  const goldTransfer=(Number(cost.gold)||0)>0||Number(eff.gold)!==0&&!!eff.gold;
+  if(!goodsNeed&&!goldTransfer)return null;
+  const ag=v4FindAgent(state,active.agentId);
+  const region=activeRegion(state);
+  if(!ag||ag.role!=='merchant'||ag.region!==region||ag.status==='idle'||active.verified!==true)
+    return '取引相手の商人が未確認です。物資・通貨の移転は実行できません。';
+  if(!Number.isFinite(Number(ag.goods))||Number(ag.goods)<goodsNeed)
+    return '商人の在庫不足（必要'+goodsNeed+'／在庫'+(Number(ag.goods)||0)+'）。';
+  if(Number(eff.gold)>0&&(Number(ag.gold)||0)<Number(eff.gold))
+    return '商人の支払い資金が不足（必要'+Number(eff.gold)+'）。';
+  return null;
+}
 function v4ResolveChoice(actionId){
   if(!S)return;
   v4EnsureState();
@@ -1929,6 +2395,8 @@ function v4ResolveChoice(actionId){
   }
   const missing=v4CostMissing(action.cost||{});
   if(missing){lg('【V4】'+missing+'：選択は未確定です。');v4RenderActive();return;}
+  const tradeIssue=v4F05SettlementIssue(S,active,action);
+  if(tradeIssue){lg('【V4取引】'+tradeIssue);v4RenderActive();return;}
   const cost=action.cost||{},eff=action.effects||{};
   if(cost.gold)S.gold-=cost.gold;
   if(cost.food)S.res.food-=cost.food;
@@ -1936,10 +2404,29 @@ function v4ResolveChoice(actionId){
   if(cost.fatigue)S.res.fatigue=cl((S.res.fatigue||0)+cost.fatigue,0,100);
   if(eff.fatigue)S.res.fatigue=cl((S.res.fatigue||0)+eff.fatigue,0,100);
   if(eff.injury)S.res.injury=cl((S.res.injury||0)+eff.injury,0,100);
-  if(eff.gold)S.gold=(S.gold||0)+eff.gold;
+  if(eff.gold){
+    let benefit=eff.gold;
+    if(benefit>0&&active.family==='F05'){
+      const sponsor=v4FindAgent(S,active.agentId);
+      sponsor.gold-=benefit; // fully validated before any cost/resource mutation
+    }
+    S.gold=(S.gold||0)+benefit;
+  }
+  if(cost.gold&&active.family==='F05'&&active.agentId){
+    const sponsor=v4FindAgent(S,active.agentId);
+    if(sponsor)sponsor.gold=(Number(sponsor.gold)||0)+cost.gold;
+  }
   if(eff.food)S.res.food=(S.res.food||0)+eff.food;
   if(eff.water)S.res.water=(S.res.water||0)+eff.water;
   if(eff.materials && S.materials)for(const [k,v] of Object.entries(eff.materials))if(k in S.materials)S.materials[k]=(S.materials[k]||0)+v;
+  if(active.family==='F05'){
+    const sponsor=v4FindAgent(S,active.agentId);
+    if(sponsor&&active.verified===true){
+      const stockUsed=Math.max(0,Number(eff.food)||0)+
+        Object.values(eff.materials||{}).reduce((n,x)=>n+Math.max(0,Number(x)||0),0);
+      sponsor.goods=Number(sponsor.goods)-stockUsed;
+    }
+  }
   const region=activeRegion(S),ri=ensureRegionIntel(S,region);
   if(eff.intel){ri.knowledge=cl((ri.knowledge||0)+eff.intel,0,100);ri.discoveryLevel=cl((ri.discoveryLevel||0)+Math.floor(eff.intel/2),0,100);}
   if(eff.reputation)ri.reputation=cl((ri.reputation||0)+eff.reputation,-50,50);
@@ -1953,8 +2440,10 @@ function v4ResolveChoice(actionId){
   if(eff.log)lg('【V4結果】'+eff.log);else lg('【V4結果】'+action.label+' を選択した。');
   S.v4Events.resolvedTokens[active.token]={day:S.day,actionId};
   S.v4Events.counts[def.eventId]=(S.v4Events.counts[def.eventId]||0)+1;
+  try{ if(active.agentId) v4ApplyEventToAgent(S, active.agentId, eff, actionId); }catch(e){}
   S.v4Events.history.push({eventId:active.eventId,sourceIds:def.sourceIds,family:def.family,day:S.day,actionId,
-    title:active.title,summary:String(eff.log||action.label).slice(0,120),token:active.token});
+    title:active.title,summary:String(eff.log||action.label).slice(0,120),token:active.token,
+    agentId:active.agentId||null,region:active.region||null,verified:!!active.verified});
   if(S.v4Events.history.length>80)S.v4Events.history.splice(0,S.v4Events.history.length-80);
   const tokens=Object.keys(S.v4Events.resolvedTokens);
   for(const key of tokens.slice(0,Math.max(0,tokens.length-120)))delete S.v4Events.resolvedTokens[key];
@@ -2745,7 +3234,11 @@ function resolveTurn(){
     if(allEnemiesDown){
       S.battle=false;
       if(S.quest){
-        S.quest.done=1;
+        if(S.quest.derived){
+          if(!v4MarkDerivedProgress(S,'battle_victory')){
+            lg('【派生依頼】戦闘勝利だけでは依頼達成とは認められません。');
+          }
+        }else S.quest.done=1;
         const qp=questProfile(S.quest.type);
         if(qp.rewardGrowth&&!S.quest.branchRewarded){
           S.party.forEach(u=>u.growthPts+=qp.rewardGrowth);
@@ -2753,7 +3246,8 @@ function resolveTurn(){
           lg("採取物の精査で全員に成長ポイント +"+qp.rewardGrowth+"。");
         }
       }
-      lg(S.heroRescuePending?"相打ち勝利。主人公を救出し、依頼達成。":"戦闘勝利。依頼達成。");
+      lg(S.quest?.derived&&!S.quest.done?'戦闘勝利。ただし派生依頼は未達成。':
+        S.heroRescuePending?'相打ち勝利。主人公を救出し、依頼達成。':'戦闘勝利。依頼達成。');
       break;
     }
     if(S.heroRescuePending){S.battle=false;break;}
@@ -2880,6 +3374,7 @@ function makeQuestOffer(qType){
 }
 function selectQuestOffer(i){
   if(S.away||S.battle)return;
+  if(v4HasActiveUndertaking())return lg('【派生依頼】進行中の派生を通常依頼で上書きできません。');
   const q=S.questOffers?.[i];if(!q)return;
   S.quest={...q};
   lg("依頼選択: "+S.quest.title);
@@ -2924,7 +3419,9 @@ function genQuest(silent){
     if(rep>=15){q.n=Math.max(2,Math.min(6,(q.n||3)-1));q.repBonus='高評判:やや易';}
     else if(rep<=-15){q.n=Math.min(6,(q.n||3)+1);q.repBonus='低評判:やや難';}
   }
-  S.quest={...S.questOffers[0]};
+  if(!(S.quest?.derived&&v4EnsureAutonomy(S).derivedQuests.some(q=>q&&q.id===S.quest.derivedId&&q.status==='active'))){
+    S.quest={...S.questOffers[0]};
+  }else if(!silent)lg('【派生依頼】進行中の依頼を保持し、通常掲示のみ更新しました。');
   simAppendOffers(S);
   if(typeof maybeOrgIntroQuest==='function')maybeOrgIntroQuest(S);
   maybeSpawnWarLiteOffers(S);
@@ -2939,6 +3436,12 @@ function activeRegion(state){
 function startQuest(){
   if(!S.quest)return lg("依頼を生成してくれ。");
   if(S.battle||S.away)return lg("帰還してから依頼を開始してくれ。");
+  if(S.quest.derived){
+    const aq=v4EnsureAutonomy(S).derivedQuests.find(q=>q.id===S.quest.derivedId);
+    if(!aq||aq.status!=='active'||S.travelDest!==aq.region){
+      lg('【派生依頼】依頼地域が目的地と一致しません。目的地を確認してください。');return;
+    }
+  }
   // 目的未設定なら拠点と同地域（域内依頼）
   if(!S.travelDest)S.travelDest=S.world.region;
   // 関所予告: 越境なのに選択なしなら明示
@@ -2980,6 +3483,9 @@ function startQuest(){
   if(route.label)lg(route.label);
   lg("天候："+S.res.weather+"。遠征方針："+plan.label+" / 推定危険度 "+readiness.estDanger.toFixed(2)+" / 帰還余力 "+readiness.reserve+"。");
   visitRegion(S,{region:S.travelDest||S.world.region});
+  // A genuinely safe cargo arrival can complete escort support even when no raider remains.
+  if(S.quest?.derived&&S.quest?.type==='護衛'&&v4MarkDerivedProgress(S,'escort_safe_arrival'))
+    lg('【護衛輸送】襲撃勢力が不在のため、実際の旅程を経た安全輸送の到着を確認。');
   maybeGenerateRumors(S,'depart');
   ensureStarterQuestions(S);
   tryAnswerQuestions(S,'depart');
@@ -3151,7 +3657,10 @@ function resolveExploration(choice){
   }
   if(S.quest && ['探索','採取'].includes(S.quest.type)){
     if(S.quest.type==='探索'){
-      S.quest.done=1; S.phase='field';
+      if(S.quest.derived){
+        if(!v4MarkDerivedProgress(S,'exploration'))lg('【派生依頼】期限・地域・依頼状況を確認してください。');
+      }else S.quest.done=1;
+      S.phase='field';
       lg('探索依頼完了。経路を調査した。戦闘せず現地滞在または帰還を選べる。');
     }else{
       S.quest.uxGatherNeed=2;S.quest.uxGatherProgress=S.quest.uxGatherProgress||0;
@@ -3167,7 +3676,9 @@ function beginBattleFromExploration(){
     if(u.id==="hero")u.cell=2;else if(u.id==="a1")u.cell=1;else if(u.id==="a2")u.cell=0;
     u.act="move";u.targetId="e0";u.moveDir=1;u.moveSteps=1;
   });
-  S.en=makeFormationEnemies(S.quest.formationName,S.quest.n,S.quest.mon);
+  if(!v4BeginLinkedEscortBattle(S)){
+    S.en=makeFormationEnemies(S.quest.formationName,S.quest.n,S.quest.mon);
+  }
   if(S.exploration&&S.exploration.battleEdge>0){
     S.en.forEach(e=>{e.cell=clampCell(e.cell+S.exploration.battleEdge);});
   }
@@ -3207,8 +3718,21 @@ function returnTown(){
   if(!S.away)return lg("出発前は帰還できない。");
   if(S.v4Events?.active&&!S.battle)return lg('対応を決めていない出来事があります。先に事件への対応を選んでください。');
   const roaming=!!S.uxJourney&&S.uxJourney.mode==='free';
+  const wasDerived=!!S.quest?.derived;
+  if(wasDerived){
+    const settled=S.quest.done&&!S.battle&&v4CompleteDerivedQuest(S,'success');
+    if(!settled){
+      const a=v4EnsureAutonomy(S),q=a.derivedQuests.find(x=>x&&x.id===S.quest.derivedId);
+      if(q&&q.status==='active')v4CloseDerived(S,q,'failed','return_without_verified_completion');
+      S.quest.done=0;
+      lg('【派生依頼】達成条件を確認できないため依頼を失敗扱いで終了し、預託金を返還しました。');
+    }
+  }
   const completed=!!S.quest?.done;
   const finishedQuest=completed?{...S.quest}:null;
+  const v4SkipNormalQuestReward=!!(finishedQuest&&(finishedQuest.v4DerivedNoNormalReward||finishedQuest.derived));
+  if(v4SkipNormalQuestReward&&S.quest){S.quest.branchRewarded=true;S.quest.v4DerivedNoNormalReward=true;}
+
   const rescued=!!S.heroRescuePending&&!completed;
   const retreating=(S.battle&&!completed)||rescued;
   if(retreating){
@@ -3220,17 +3744,24 @@ function returnTown(){
   if(completed){
     recordQuestOutcome(S.quest,"success");
     simCompleteQuest(S,S.quest);
-    S.clearCount=Math.min(1e9,(S.clearCount||0)+1);
-    S.cleared=false;
-    fullRecoverAtTown();
-    const gRew=questGoldReward(S.quest,'success');
-    S.gold=(S.gold||0)+gRew;
-    grantQuestMaterials(S.quest,'success');
-    if(S.quest&&S.quest.infraTarget)completeInfraRepairFromQuest(S,S.quest);
-    refreshLogisticsBands(S);
-    lg("依頼達成帰還。累積依頼達成 "+S.clearCount+"件。報酬 +"+gRew+" 通貨。治療と補給は町で別途手配が必要。");
-    // 町帰還で在庫価格を更新（二重報酬なし）
-    refreshShopPrices(S);
+    if(!v4SkipNormalQuestReward){
+      S.clearCount=Math.min(1e9,(S.clearCount||0)+1);
+      S.cleared=false;
+      fullRecoverAtTown();
+      const gRew=questGoldReward(S.quest,'success');
+      S.gold=(S.gold||0)+gRew;
+      grantQuestMaterials(S.quest,'success');
+      if(S.quest&&S.quest.infraTarget)completeInfraRepairFromQuest(S,S.quest);
+      refreshLogisticsBands(S);
+      lg("依頼達成帰還。累積依頼達成 "+S.clearCount+"件。報酬 +"+gRew+" 通貨。治療と補給は町で別途手配が必要。");
+      refreshShopPrices(S);
+    }else{
+      // U02: derived already settled in v4CompleteDerivedQuest — no clearCount/gold/materials
+      S.cleared=false;
+      lg("派生依頼の帰還処理完了（通常依頼報酬・達成回数は加算しない）。");
+      refreshLogisticsBands(S);
+      refreshShopPrices(S);
+    }
   }else{
     if(!roaming)recordQuestOutcome(S.quest,rescued?"rescue_retreat":"retreat");
     lg(roaming&&!S.battle&&!rescued?"自由遠征から帰還した。持ち帰った情報と素材を確認できる。":rescued?"救出帰還。報酬・全回復なし。休養で回復できる。":"撤退帰還。報酬・全回復なし。休養で回復できる。");
@@ -3245,6 +3776,8 @@ function returnTown(){
   });
   uxCloseJourney(completed?'依頼達成':roaming?'自由遠征終了':rescued?'敗北帰還':'撤退');
   S.en=[];S.battle=false;S.away=false;S.phase="town";S.exploration=null;S.heroRescuePending=false;
+  S.v4EncounterAgentId=null;S.v4EncounterAgentVerified=false;
+  S.v4EncounterBattleId=null;S.v4EncounterRegion=null;S.v4EscortBattleQuestId=null;
   S.borderChoice=null;S._borderAppliedKey=null;
   try{v18DeliverRumorTransit(S);v18PullLatentRumorsOnVisit(S,S.world&&S.world.region);}catch(e){}
   try{v18BoardContractOffers(S);}catch(e){}
@@ -3252,7 +3785,7 @@ function returnTown(){
   S.travelDest=S.world.region;
   if(roaming&&S.uxJourney?.heldQuest)S.quest=S.uxJourney.heldQuest;
   if(S.quest)S.quest.done=0;
-  if(completed){
+  if(completed||wasDerived){
     if(finishedQuest?.series==="war_refugee")S.warRefugeeNextOfferDay=S.day+7;
     refreshBaseQuestOffers(S,finishedQuest);
     S.quest={...S.questOffers[0]};
@@ -5965,6 +6498,9 @@ function useSaveCandidate(item){
   const before=S,oldWeaponSeq=weaponSeq;
   try{
     S=item.migrated;
+    // V4 stable: normalize V4 autonomy on legacy Save load, before the first world day.
+    // Existing agents/quest escrow are preserved by v4EnsureState.
+    v4EnsureState();
     weaponSeq=Math.max(1,...[...S.party,...S.en].map(u=>Number(u.weapon.id.match(/_w(\d+)$/)?.[1]||0)));
     syncTargets();
     const dialog=document.getElementById('saveCandidatePicker');if(dialog)dialog.remove();
@@ -6263,12 +6799,74 @@ function render(){
   v18RenderExpeditionAdvisor(); // V18 read-only render hook
   v19RenderPhase0(); // V1.9 Phase0 only
   try{ v4OnRenderHook(); }catch(e){}
+  try{ v4RenderWorldNpcPanel(); }catch(e){}
   try{ v4OnBattleRenderHook(); }catch(e){console.warn('V4 negotiation render',e);} // V4 negotiation UI refresh
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
+  try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
   try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
+/* HQ UX P1: the same gameplay with one visible next-action clue; read-only render. */
+let uxFirstJourneyAnchor='uxQuestCard';
+function uxRenderFirstJourneyCoach(){
+  if(!S)return;
+  const step=document.getElementById('uxFirstJourneyStep');
+  const next=document.getElementById('uxFirstJourneyNext');
+  const btn=document.getElementById('uxFirstJourneyGo');
+  const pulse=document.getElementById('uxWorldPulseLine');
+  if(!step||!next||!btn||!pulse)return;
+  let phase='1/4 依頼を選ぶ';
+  let detail='依頼候補を見比べ、やりたい仕事を選ぼう。最初は探索や採取を選ぶと、戦闘なしで達成できる場合があります。';
+  let target='uxQuestCard';
+  if(S.battle){
+    phase='3/4 戦闘の判断';
+    detail='敵の位置と射程を確認。「攻撃/接近の案」を確認してから1ターン実行。交渉可能ならボタンも表示されます。';
+    target='battleCommandCard';
+  } else if(S.v4Events?.active){
+    phase='3/4 道中の出来事';
+    detail='事件への対応が未決です。選択肢と費用・危険を見比べて決めましょう。';
+    target='v4EventsCard';
+  } else if(S.away&&S.quest?.done){
+    phase='4/4 成果を持って帰る';
+    detail='依頼の目的は達成しました。もう少し現地を調べるか、帰還して結果を確定できます。';
+    target='uxFieldCard';
+  } else if(S.away&&S.phase==='exploration'){
+    phase='2/4 道中を進む';
+    detail='「慎重に進む」と「強行する」を選び、探索の結果を確認しましょう。';
+    target='uxExploreCard';
+  } else if(S.away){
+    phase='3/4 現地の行動';
+    detail='目的に応じて現地調査・採集・小仕事を選択。十分に成果が出たら帰還します。';
+    target='uxFieldCard';
+  } else if((Number(S.clearCount)||0)>0||S.uxLastJourney?.outcome==='success'){
+    phase='4/4 初回の冒険を経験済み';
+    detail='次は補給・休養を確認し、もう一つ依頼を選ぶか、自由遠征へ。';
+    target='uxQuestCard';
+  } else if(S.quest){
+    phase='1/4 依頼と目的地を確認';
+    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼候補を確認してから、旅の目的を「依頼」にして出発しましょう。';
+    target='uxQuestCard';
+  }
+  step.textContent=phase; next.textContent=detail;
+  uxFirstJourneyAnchor=target;
+  btn.textContent=({uxQuestCard:'依頼候補を見る',uxExploreCard:'探索の選択へ',battleCommandCard:'戦闘コマンドへ',v4EventsCard:'事件の選択へ',uxFieldCard:'現地の行動へ'})[target]||'操作場所を見る';
+  const region=S.away?(S.travelDest||S.world?.region):S.world?.region;
+  const local=S.v4Events?.autonomy?.regions?.[region];
+  if(local&&Number.isFinite(Number(local.security))){
+    const safety=Math.round(Number(local.security));
+    const stress=Number.isFinite(Number(local.marketStress))?Number(local.marketStress):null;
+    pulse.textContent='【'+region+'の街道】治安 '+safety+'/100'+(stress!==null?' ／ 価格圧 '+(stress>0?'+':'')+stress+'%':'')+' ／ 情勢は日付と出来事で変化';
+  }else{
+    pulse.textContent='【街道便り】'+(region||'現在地')+'の具体的な情勢は調査・噂で確認できます';
+  }
+}
+function uxFirstJourneyGo(){
+  if(typeof F1Shell!=='undefined'&&typeof F1Shell.showPane==='function')F1Shell.showPane('adv');
+  const target=document.getElementById(uxFirstJourneyAnchor)||document.getElementById('uxQuestCard');
+  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function uxRenderGuide(){
   if(typeof S==='undefined'||!S)return;
   const here=S.world ? (S.away ? (typeof activeRegion==='function' ? activeRegion(S) : S.world.region) : S.world.town+'（'+S.world.region+'）') : '未確認';
@@ -6721,24 +7319,39 @@ function v3PreserveFailedBoot(raw){
   return false;
 }
 function boot(){
-  let has=false,failedCurrent=null;
+  let has=false,failedCurrent=null,storageReadable=true;
   try{
     failedCurrent=localStorage.getItem(SAVE_KEY);
     has=!!failedCurrent||!!localStorage.getItem(SAVE_KEY+".bak")||LEGACY_SAVE_KEYS.some(k=>!!localStorage.getItem(k));
-  }catch(e){}
+  }catch(e){storageReadable=false;console.error('[V4 Stable] storage read unavailable',e);}
   if(has){
     S=emptyState();
     if(!load()){
-      if(failedCurrent&&!v3PreserveFailedBoot(failedCurrent)){
-        console.error('[Save preservation blocker] Unable to protect corrupted current; automatic newGame cancelled.');
-        const el=document.getElementById('world');
-        if(el)el.textContent='破損Saveの安全退避に失敗。既存Saveを保護するため新世界の自動保存を中止。';
-        return;
-      }
-      newGame();
-      if(failedCurrent)lg("読込不能な現行セーブを .failed に退避し、新世界を生成した。");
+      // The raw current and all legacy keys remain untouched. Never boot newGame()
+      // over a corrupt Save without the player's explicit action.
+      const protectedRaw=!failedCurrent||v3PreserveFailedBoot(failedCurrent);
+      console.warn('[V4 Stable] No valid Save could be opened; destructive auto-save cancelled.',{protectedRaw});
+      const host=document.getElementById('f1HeaderCard')||document.body;
+      const notice=document.createElement('section');notice.className='c';notice.id='v4SaveRecovery';
+      notice.setAttribute('role','alert');
+      const h=document.createElement('h2');h.textContent='保存データを読み込めませんでした';notice.appendChild(h);
+      const desc=document.createElement('p');
+      desc.textContent=protectedRaw?
+        '既存の保存データを上書きしていません。保存候補の再選択か、明示的な新規開始を選んでください。':
+        '破損データの安全退避に失敗しました。既存データは変更していません。手動で控えを取り、保存領域を確保してから操作してください。';
+      notice.appendChild(desc);
+      const button=document.createElement('button');button.type='button';button.textContent='保存候補を再確認';
+      button.onclick=()=>load(true);notice.appendChild(button);
+      const buttonNew=document.createElement('button');buttonNew.type='button';buttonNew.textContent='確認後、新しい世界を開始';
+      buttonNew.onclick=()=>confirmNewGame();notice.appendChild(buttonNew);
+      host.prepend(notice);
     }
-  }else newGame();
+  }else if(storageReadable)newGame();
+  else {
+    S=emptyState();
+    const el=document.getElementById('world');
+    if(el)el.textContent='保存領域を確認できません。既存データ保全のため自動保存を停止しました。';
+  }
 }
 /* V1.1 additive WorldSim. No combat replacement. Public APIs accept a game state.
  * Event effects are finite, source-attributed modifiers; graph traversal is breadth-first.
@@ -7794,9 +8407,10 @@ function uxStartJourney(forceQuest=false){
     if(!S.quest){uxRenderJourney();return lg('先に依頼を選んでください。');}
     if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
     startQuest();
-    if(S.away)uxMaybeEncounter();
+    if(S.away){uxMaybeEncounter();render();}
     return;
   }
+  if(v4HasActiveUndertaking()){lg('【派生依頼】受注中の依頼があるため自由遠征へ置換できません。');return;}
   if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
   uxOpenJourney('free');
   S.quest=null;S.away=true;S.phase='field';S.exploration=null;S.battle=false;
@@ -7895,7 +8509,12 @@ function uxFieldGather(){
   if(eco){eco.harvestPressure=Math.min(100,(eco.harvestPressure||0)+7);eco.veg=Math.max(0,(eco.veg||0)-2);}
   if(S.quest?.type==='採取'&&!S.quest.done){
     S.quest.uxGatherProgress=(S.quest.uxGatherProgress||0)+amount;
-    if(S.quest.uxGatherProgress>=2){S.quest.done=1;lg('採取依頼の必要量を確保。戦闘なしで帰還・納品できます。');}
+    if(S.quest.uxGatherProgress>=2){
+      if(S.quest.derived){
+        if(!v4MarkDerivedProgress(S,'gather'))lg('【派生依頼】必要素材・地域・期限を確認してください。');
+      }else S.quest.done=1;
+      if(S.quest.done)lg('採取依頼の必要量を確保。戦闘なしで帰還・納品できます。');
+    }
   }
   if(amount)uxLocalProgress('gather');
   uxAddJourneyNote('Day'+S.day+'：'+place+'で'+(amount?'採集成功。':'資源が乏しく収穫なし。'));
