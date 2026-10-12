@@ -8718,7 +8718,7 @@ function uxRenderJourney(){
   if(txt&&S.uxLastJourney){const j=S.uxLastJourney,b=j.depart,a=j.arrival;
     const names={gold:'通貨',food:'食料',water:'水',fatigue:'疲労',injury:'負傷'};const diff=(key,unit='')=>{const delta=(a[key]||0)-(b[key]||0);return names[key]+'：'+b[key]+'→'+a[key]+' ('+(delta>=0?'+':'')+delta+unit+')';};
     let world=['safety','logistics','passability'].map(k=>b.local?.[k]!=null&&a.local?.[k]!=null?({safety:'治安',logistics:'物流',passability:'通行状況'}[k])+' '+b.local[k]+'→'+a.local[k]:null).filter(Boolean).join('／');
-    const witnessed=(S.uxLocalTalkHistory||[]).filter(h=>h&&h.region===j.region&&Number(h.day)>=Number(j.departDay)&&Number(h.day)<=Number(j.returnDay));
+    const witnessed=(Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[]).filter(h=>h&&h.region===j.region&&Number(h.day)>=Number(j.departDay)&&Number(h.day)<=Number(j.returnDay));
     const met=witnessed.length?'\nこの旅で話を聞いた人：'+uxLocalContact(j.region).name+'（'+witnessed.length+'回）':'\nこの旅での住人との会話記録：なし';
     txt.textContent=j.region+'を'+(j.mode==='free'?'自由に旅した':'依頼で訪ねた')+'。Day '+j.departDay+'→'+j.returnDay+'、結果：'+j.outcome+'。\n'+
       [diff('gold','通貨'),diff('food'),diff('water'),diff('fatigue')].join(' ／ ')+
