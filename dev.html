@@ -398,7 +398,7 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <div id="quest" class="muted"></div>
     <div id="questOffers" class="g" style="margin-top:8px"></div>
     <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道事件の派生依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。商隊／襲撃／警備は成功後に次段階が連鎖します。</p>
-<button type="button" class="s" onclick="v5TestSeedChainOffers()" title="試験用">試験: 連鎖入口を掲示</button></div>
+</div>
   </div>
 
 
@@ -2127,6 +2127,14 @@ function v4CompleteDerivedQuest(state,outcome,opts){
     const mats=state.materials||{},have=(Number(mats.herb)||0)+(Number(mats.scrap)||0);
     if(have<q.needGoods)return false;
   }
+  // Snapshot the actual persistent numbers *before* settlement; display is a projection only.
+  // This is the only place the V5 world-effect receipt is finalized.
+  const priorRec=a.regions[q.region]||{};
+  const priorWorld={
+    security:Number.isFinite(Number(priorRec.security))?Number(priorRec.security):50,
+    marketStress:Number.isFinite(Number(priorRec.marketStress))?Number(priorRec.marketStress):0,
+    deliveries:Number.isFinite(Number(priorRec.deliveries))?Number(priorRec.deliveries):0
+  };
   // All conditions checked. Commit as one synchronous transaction.
   if(q.needGoods>0){
     let remain=q.needGoods;
@@ -2139,42 +2147,40 @@ function v4CompleteDerivedQuest(state,outcome,opts){
   const rec=a.regions[q.region]||{marketStress:0,security:50,deliveries:0,losses:0};
   if(q.dtype==='護衛輸送'||q.dtype==='資材補給'){
     rec.marketStress=Math.max(-18,(Number(rec.marketStress)||0)-2);
-    rec.security=Math.min(100,(Number(rec.security)||50)+3);
+    rec.security=Math.min(100,priorWorld.security+3);
     rec.deliveries=(Number(rec.deliveries)||0)+1;
   }
-  if(q.dtype==='調査回収')rec.security=Math.min(100,(Number(rec.security)||50)+2);
+  if(q.dtype==='調査回収')rec.security=Math.min(100,priorWorld.security+2);
   a.regions[q.region]=rec;
   const ri=typeof ensureRegionIntel==='function'?ensureRegionIntel(state,q.region):null;
-  if(ri)ri.reputation=Math.max(-50,Math.min(50,(Number(ri.reputation)||0)+2));
+  const priorReputation=ri?(Number(ri.reputation)||0):null;
+  if(ri)ri.reputation=Math.max(-50,Math.min(50,priorReputation+2));
   state.quest={...state.quest,done:1,v4DerivedNoNormalReward:true,branchRewarded:true};
   v4CapDerivedQuests(a);
-  // V5 Phase1: record actual world deltas for player-visible causal report (no double-apply)
+  // V5 Phase1: record exact *applied* deltas, including cap/floor effects.
+  // Persist the receipt on settlement, not during render(); never apply effects twice.
   try{
-    const beforeRec={marketStress:Number((a.regions[q.region]&&a.regions[q.region].marketStress)||0),
-      security:Number((a.regions[q.region]&&a.regions[q.region].security)||50),
-      deliveries:Number((a.regions[q.region]&&a.regions[q.region].deliveries)||0)};
-    // re-read after mutation above already applied; store report from applied values
-    const afterRec=a.regions[q.region]||{};
     const changed=[],unchanged=[];
-    const pairs=[['security','地域治安'],['marketStress','市場ストレス'],['deliveries','配送回数']];
-    // Use stored pre-values from this completion block's known deltas
-    const deltaSec=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?3:(q.dtype==='調査回収'?2:0);
-    const deltaMkt=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?-2:0;
-    const deltaDel=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?1:0;
-    if(deltaSec)changed.push('地域治安 +'+deltaSec);
-    else unchanged.push('地域治安');
-    if(deltaMkt)changed.push('市場ストレス '+deltaMkt);
-    else unchanged.push('市場ストレス');
-    if(deltaDel)changed.push('配送回数 +'+deltaDel);
-    else unchanged.push('配送回数');
-    if(ri)changed.push('地域評判 +2'); else unchanged.push('地域評判');
-    state._v5LastWorldReport={
+    const afterRec=a.regions[q.region]||{};
+    const noteDiff=(label,before,after)=>{
+      const d=after-before;
+      if(d===0)unchanged.push(label);
+      else changed.push(label+' '+(d>0?'+':'')+d);
+    };
+    noteDiff('地域治安',priorWorld.security,Number(afterRec.security));
+    noteDiff('市場ストレス',priorWorld.marketStress,Number(afterRec.marketStress));
+    noteDiff('配送回数',priorWorld.deliveries,Number(afterRec.deliveries));
+    if(ri)noteDiff('地域評判',priorReputation,Number(ri.reputation));
+    else unchanged.push('地域評判');
+    const receipt={
       day:day, region:q.region, questTitle:q.title, series:q.series||null, stage:q.stage||1,
       outcome:'success', rewardGold:pay,
-      changed:changed, unchanged:unchanged,
+      changed,unchanged,
       note:'報酬は預託金から一度のみ。通常依頼報酬・達成回数は加算しない。'
     };
-    lg('【世界変化】変わった: '+changed.join('、')+(unchanged.length?' ／ 変わらなかった: '+unchanged.join('、'):''));
+    state._v5LastWorldReport=receipt;
+    v5EnsureChainState(state).lastReport=receipt;
+    lg('【世界変化】変わった: '+(changed.join('、')||'なし')+(unchanged.length?' ／ 変わらなかった: '+unchanged.join('、'):'') );
   }catch(e){console.warn('v5 world report',e);}
   // V5 Phase1 P0-1: multi-stage chain spawn (商隊/襲撃/警備) — only after verified success, no double reward
   try{v5SpawnNextChainStage(state,q);}catch(e){console.warn('v5 chain spawn',e);}
@@ -2283,7 +2289,6 @@ function v5RenderWorldReport(){
   const host=document.getElementById('v5WorldReportBody');
   if(!host||!S)return;
   const rep=S._v5LastWorldReport||S.v5Chain?.lastReport;
-  if(S._v5LastWorldReport){v5EnsureChainState(S).lastReport=S._v5LastWorldReport;}
   if(!rep){host.textContent='まだ依頼完了の報告はありません。';return;}
   const lines=[];
   lines.push('Day '+rep.day+' ／ '+(rep.region||'')+' ／ '+(rep.questTitle||''));
