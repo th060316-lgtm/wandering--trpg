@@ -147,6 +147,17 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 #battleLogCard .log{height:200px;white-space:pre-wrap;overflow-wrap:anywhere}
 #partyBattleNote[hidden]{display:none}
 @media(max-width:480px){#battlePartyHost #party{grid-template-columns:minmax(0,1fr)}#battleTurnSummary{font-size:12px}}
+/* V5 vertical slice: known local contacts and observed encounter history; presentation only. */
+.v5-contact{background:var(--surface2);border:1px solid #476355;border-radius:10px;padding:11px;margin:9px 0;min-width:0}
+.v5-contact-title{font-size:12px;color:#b4d7bf;font-weight:700;margin-bottom:6px}
+.v5-contact-person{font-size:14px;line-height:1.6;margin:0 0 6px;overflow-wrap:anywhere}
+.v5-contact-history{font-size:12px;color:var(--muted);line-height:1.6;margin:0;overflow-wrap:anywhere}
+/* V5 story slice: link real regional NPC conversations to existing local work; no invented rewards. */
+.v5-episode{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);min-width:0}
+.v5-episode-kicker{font-size:11px;font-weight:700;color:#b8d8c5}
+.v5-episode-heading{font-size:14px;font-weight:650;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}
+.v5-episode p{font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0}
+.v5-episode-next{color:#dfc999}
 /* PERSONA_P0_20261012: context-aware views, event spotlight and departure notice */
 [hidden]{display:none!important}
 .ux-depart-alert{border:1px solid #88633b;background:#32261d;color:#f1d7a9;padding:11px;border-radius:9px;white-space:pre-wrap;line-height:1.65;margin:9px 0}
@@ -347,6 +358,17 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     <p id="uxFieldStatus" class="ux-story"></p>
     <label>今日活動する場所 <select id="uxFieldSite" onchange="uxChooseFieldSite(this.value)" style="width:100%"></select></label>
     <p id="uxSiteInfo" class="ux-hint">活動を実行すると現地で1日経過します。</p>
+    <div class="v5-contact" id="v5ContactCard" aria-label="土地の人と再会の記録">
+      <div class="v5-contact-title">この土地で出会う人</div>
+      <p id="v5ContactPerson" class="v5-contact-person"></p>
+      <p id="v5ContactHistory" class="v5-contact-history" aria-live="polite"></p>
+    </div>
+    <section class="v5-episode" id="v5EpisodePanel" aria-label="この土地で進む小さな物語">
+      <div class="v5-episode-kicker" id="v5EpisodeStep">土地の話を確かめる</div>
+      <div class="v5-episode-heading" id="v5EpisodeTitle">住人と歩く小さな冒険</div>
+      <p id="v5EpisodeStory"></p>
+      <p id="v5EpisodeNext" class="v5-episode-next" aria-live="polite"></p>
+    </section>
     <div id="uxLocalTalkNote" class="ux-hint" aria-live="polite"></div>
     <div class="ux-choice">
       <button type="button" onclick="uxFieldSurvey()">現地を調査する</button>
@@ -375,7 +397,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
     </div>
     <div id="quest" class="muted"></div>
     <div id="questOffers" class="g" style="margin-top:8px"></div>
-    <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道事件の派生依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。</p></div>
+    <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道事件の派生依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。商隊／襲撃／警備は成功後に次段階が連鎖します。</p>
+<button type="button" class="s" onclick="v5TestSeedChainOffers()" title="試験用">試験: 連鎖入口を掲示</button></div>
   </div>
 
 
@@ -554,7 +577,8 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
   </div>
 
   <div class="c" id="v4AutonomyCard"><h2>訪問した地域の商隊・街道情勢</h2><div id="v4AutonomyStatus" class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
-  <div class="c" id="v4DerivedQuestCard"><h2>街道事件から発生した派生依頼</h2><div id="v4DerivedQuestBoard" class="muted"></div><p class="s">通常の依頼掲示を置き換えません。最大3件。受注は拠点から。</p></div>
+  <div class="c" id="v4DerivedQuestCard"><h2>街道事件から発生した派生依頼</h2><div id="v4DerivedQuestBoard" class="muted"></div><p class="s">通常の依頼掲示を置き換えません。最大3件。受注は拠点から。商隊／襲撃／警備の連鎖は成功後に次段階が掲示されます。</p></div>
+  <div class="c" id="v5WorldReportCard"><h2>直近の依頼結果と世界変化</h2><div id="v5WorldReportBody" class="muted">まだ依頼完了の報告はありません。</div><p class="s">実際に変わった項目と変わらなかった項目を区別して表示します。報酬の二重適用はありません。</p></div>
   <div class="c" id="v4PostwarCard"><h2>戦後の記録（訪問済み）</h2><div id="v4PostwarStatus" class="muted" style="white-space:pre-wrap"></div></div>
   <details class="c" id="simPanel">
     <summary>世界の詳しい記録と検証機能（開発用）</summary>
@@ -1598,6 +1622,14 @@ function v4AutonomyMarketFactor(state,region){
   return 1+Math.max(-18,Math.min(18,stress))*.01;
 }
 
+/* V5 player-facing terminology: keep underlying 27 agents and all simulation values intact. */
+function v5AgentNarrativeLabel(ag){
+  if(!ag)return '関係する集団';
+  return ({merchant:'交易団',raider:'襲撃集団',guard:'街道警備隊'})[ag.role]||'地域の集団';
+}
+function v5AgentNarrativeStatus(status){
+  return ({active:'活動中',wounded:'損害から回復中',retreated:'撤退中',idle:'活動停止中'})[status]||'状況不明';
+}
 function v4RenderAutonomous(){
   const node=document.getElementById('v4AutonomyStatus');
   if(!node||!S)return;
@@ -1608,9 +1640,16 @@ function v4RenderAutonomous(){
   let extra='';
   if(a.agents&&a.agents.length){
     const here=a.agents.filter(ag=>ag.region===(S.world?.region)&&ag.status!=='idle').slice(0,4);
-    if(here.length) extra='\\n現地主体: '+here.map(ag=>ag.role+'(force'+ag.force+'/金'+ag.gold+'/'+ag.status+')').join(', ');
+     if(here.length) extra='\n現地で活動する集団：'+here.map(ag=>v5AgentNarrativeLabel(ag)+'（'+v5AgentNarrativeStatus(ag.status)+'）').join('、');
   }
-  node.textContent=(list.length?list.map(e=>'Day'+e.day+'／'+e.region+'：'+e.text+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）').join('\n'):
+  node.textContent=(list.length?list.map(e=>{
+    const linked=(a.agents||[]).find(ag=>ag&&ag.id===e.agentId);
+    const label=v5AgentNarrativeLabel(linked||{role:e.role});
+    let story=String(e.text||'');
+    if(e.agentId)story=story.split(String(e.agentId)).join(label);
+    story=story.replace(/（force=\d+,\s*morale=\d+）。?/g,'（戦力と士気を回復中）。');
+    return 'Day'+e.day+'／'+e.region+'：'+story+'（価格圧 '+(e.marketStress>0?'+':'')+e.marketStress+'%）';
+  }).join('\n'):
     '訪問済みの地域で確認できる新しい街道事件はありません。遠方の事情は未確認です。')+extra;
 }
 
@@ -2013,6 +2052,8 @@ function v4SpawnDerivedFromIncident(state, incident){
     rewardGold, needGoods, status:'open', createdDay:day, dueDay:day+daysLimit,
     derived:true, series:'v4_auto_'+dtype, stage:1, escrowed:true, _rewarded:false
   };
+  // V5 Phase1: map incident-derived stage-1 into chain series (商隊/襲撃/警備)
+  try{v5TagDerivedSeries(q);}catch(e){}
   if(!Array.isArray(a.derivedQuests))a.derivedQuests=[];
   a.derivedQuests.push(q);
   v4CapDerivedQuests(a);
@@ -2052,8 +2093,9 @@ function v4AcceptDerivedQuest(qid){
   if(!typeMap[q.dtype]){v4CloseDerived(S,q,'failed','unsupported_target');return false;}
   S.quest={type:typeMap[q.dtype],title:q.title,place:q.region,done:0,derived:true,
     derivedId:q.id,agentId:q.agentId,payerId:q.payerId,causeId:q.causeId,
-    rewardGold:q.rewardGold,needGoods:q.needGoods||0,mon:null,n:2,
-    branchRewarded:false,v4DerivedNoNormalReward:true};
+    rewardGold:q.rewardGold,needGoods:q.needGoods||0,mon:null,n:Math.min(6,2+(Number(q.stage)||1)),
+    branchRewarded:false,v4DerivedNoNormalReward:true,
+    series:q.series||null,stage:q.stage||1,v5Chain:!!q.v5Chain};
   S.travelDest=q.region;
   lg('【派生依頼】受注：'+q.title+'（期限 Day'+q.dueDay+'／保証金 '+q.rewardGold+'）');
   render();save();return true;
@@ -2106,9 +2148,186 @@ function v4CompleteDerivedQuest(state,outcome,opts){
   if(ri)ri.reputation=Math.max(-50,Math.min(50,(Number(ri.reputation)||0)+2));
   state.quest={...state.quest,done:1,v4DerivedNoNormalReward:true,branchRewarded:true};
   v4CapDerivedQuests(a);
+  // V5 Phase1: record actual world deltas for player-visible causal report (no double-apply)
+  try{
+    const beforeRec={marketStress:Number((a.regions[q.region]&&a.regions[q.region].marketStress)||0),
+      security:Number((a.regions[q.region]&&a.regions[q.region].security)||50),
+      deliveries:Number((a.regions[q.region]&&a.regions[q.region].deliveries)||0)};
+    // re-read after mutation above already applied; store report from applied values
+    const afterRec=a.regions[q.region]||{};
+    const changed=[],unchanged=[];
+    const pairs=[['security','地域治安'],['marketStress','市場ストレス'],['deliveries','配送回数']];
+    // Use stored pre-values from this completion block's known deltas
+    const deltaSec=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?3:(q.dtype==='調査回収'?2:0);
+    const deltaMkt=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?-2:0;
+    const deltaDel=(q.dtype==='護衛輸送'||q.dtype==='資材補給')?1:0;
+    if(deltaSec)changed.push('地域治安 +'+deltaSec);
+    else unchanged.push('地域治安');
+    if(deltaMkt)changed.push('市場ストレス '+deltaMkt);
+    else unchanged.push('市場ストレス');
+    if(deltaDel)changed.push('配送回数 +'+deltaDel);
+    else unchanged.push('配送回数');
+    if(ri)changed.push('地域評判 +2'); else unchanged.push('地域評判');
+    state._v5LastWorldReport={
+      day:day, region:q.region, questTitle:q.title, series:q.series||null, stage:q.stage||1,
+      outcome:'success', rewardGold:pay,
+      changed:changed, unchanged:unchanged,
+      note:'報酬は預託金から一度のみ。通常依頼報酬・達成回数は加算しない。'
+    };
+    lg('【世界変化】変わった: '+changed.join('、')+(unchanged.length?' ／ 変わらなかった: '+unchanged.join('、'):''));
+  }catch(e){console.warn('v5 world report',e);}
+  // V5 Phase1 P0-1: multi-stage chain spawn (商隊/襲撃/警備) — only after verified success, no double reward
+  try{v5SpawnNextChainStage(state,q);}catch(e){console.warn('v5 chain spawn',e);}
   lg('【派生依頼】完了：'+q.title+'／預託金から報酬 '+pay);
   return true;
 }
+
+/* ===== V5.0 Phase1: multi-stage derived quest chains (商隊 / 襲撃 / 警備) =====
+ * Builds on existing v4 derived + escrow. Does not change SAVE_KEY or SAVE_VERSION.
+ * Stage 1 comes from street incidents; stages 2-3 spawn only after verified success.
+ */
+const V5_CHAIN_DEFS={
+  'v5_caravan':{ // 商隊護衛系列 (delivery/escort incidents)
+    label:'商隊護衛', maxStage:3, dtype:'護衛輸送', typeMap:'護衛',
+    titles:{1:'商隊護送支援',2:'商隊再輸送（警戒強化）',3:'幹線防衛・商隊最終護衛'},
+    descs:{1:'商隊護衛または物資輸送の人手を求めている。',2:'前回の護衛成功を受け、警戒を強化した再輸送が依頼された。',3:'幹線の最終防衛。商隊の安全確保が地域経済に直結する。'},
+    rewardBase:10, needGoods:0
+  },
+  'v5_raid':{ // 襲撃調査系列 (raid/trade_fail)
+    label:'襲撃調査', maxStage:3, dtype:'調査回収', typeMap:'探索',
+    titles:{1:'襲撃跡調査・回収',2:'襲撃勢力の追跡調査',3:'襲撃根絶の現地確認'},
+    descs:{1:'街道が被害を受けた。調査または物資回収（非戦闘可）。',2:'襲撃の原因と勢力を追跡する。情報と現場確認が必要。',3:'襲撃の根を断つ最終確認。治安回復の証跡を持ち帰れ。'},
+    rewardBase:8, needGoods:0
+  },
+  'v5_guard':{ // 警備支援系列 (repel/underfunded)
+    label:'警備支援', maxStage:3, dtype:'資材補給', typeMap:'採取',
+    titles:{1:'街道修繕・資材補給',2:'警備拠点の資材再補給',3:'関所復旧・最終資材納入'},
+    descs:{1:'資材不足。薬草や端材の納入で復旧を助けてほしい（非戦闘）。',2:'警備拠点の再補給。前回の納入を踏まえた追加要請。',3:'関所復旧の最終段階。必要資材を揃えて納入せよ。'},
+    rewardBase:7, needGoods:1
+  }
+};
+function v5SeriesFromDtype(dtype){
+  if(dtype==='護衛輸送')return 'v5_caravan';
+  if(dtype==='調査回収')return 'v5_raid';
+  if(dtype==='資材補給')return 'v5_guard';
+  return null;
+}
+function v5EnsureChainState(state){
+  if(!state.v5Chain||typeof state.v5Chain!=='object')state.v5Chain={lineage:{},lastReport:null};
+  if(!state.v5Chain.lineage||typeof state.v5Chain.lineage!=='object')state.v5Chain.lineage={};
+  return state.v5Chain;
+}
+function v5SpawnNextChainStage(state, completedQ){
+  if(!state||!completedQ||completedQ.status!=='done')return null;
+  const series=completedQ.series||v5SeriesFromDtype(completedQ.dtype);
+  if(!series||!V5_CHAIN_DEFS[series])return null;
+  const def=V5_CHAIN_DEFS[series];
+  const chain=v5EnsureChainState(state);
+  const curStage=Math.max(1, Number(completedQ.stage)||1);
+  if(curStage>=def.maxStage){
+    lg('【依頼連鎖】'+def.label+' 系列は最終段階（'+def.maxStage+'）まで完了した。');
+    chain.lineage[series]=def.maxStage;
+    return null;
+  }
+  const nextStage=curStage+1;
+  const a=v4EnsureAutonomy(state);
+  if(!a)return null;
+  // Do not spawn if an open/active quest of same series already exists
+  const exists=(a.derivedQuests||[]).some(x=>x&&(x.status==='open'||x.status==='active')&&x.series===series);
+  if(exists)return null;
+  const live=(a.derivedQuests||[]).filter(q=>q&&(q.status==='open'||q.status==='active'));
+  if(live.length>=3)return null;
+  const region=completedQ.region;
+  const payer=v4FindAgent(state, completedQ.payerId)||v4PickPayer(state, region, completedQ.agentId);
+  if(!payer)return null;
+  const canPay=Math.max(0, Number(payer.gold)||0);
+  if(canPay<3)return null;
+  let rewardGold=Math.min(def.rewardBase+nextStage*2, canPay);
+  payer.gold=canPay-rewardGold;
+  payer._escrow=(Number(payer._escrow)||0)+rewardGold;
+  const day=Number(state.day)||1;
+  const baseId='dq_v5_'+series+'_s'+nextStage+'_'+day+'_'+String(region).slice(0,24);
+  let derivedId=baseId, suffix=0;
+  while([...(a.derivedQuests||[]),...(a.derivedHistory||[])].some(q=>q&&q.id===derivedId))derivedId=baseId+'_'+(++suffix);
+  const needGoods=def.needGoods>0?Math.min(3, def.needGoods+Math.floor(nextStage/2)):0;
+  const q={
+    id:derivedId,
+    dtype:def.dtype,
+    title:region+'の'+def.titles[nextStage],
+    desc:def.descs[nextStage],
+    region,
+    causeId:completedQ.causeId||null,
+    agentId:completedQ.agentId||null,
+    payerId:payer.id,
+    rewardGold, needGoods,
+    status:'open', createdDay:day, dueDay:day+12+nextStage*2,
+    derived:true, series:series, stage:nextStage, escrowed:true, _rewarded:false,
+    chainParentId:completedQ.id, v5Chain:true
+  };
+  if(!Array.isArray(a.derivedQuests))a.derivedQuests=[];
+  a.derivedQuests.push(q);
+  chain.lineage[series]=nextStage;
+  v4CapDerivedQuests(a);
+  lg('【依頼連鎖】次段階が掲示された：'+q.title+'（'+def.label+' 段階'+nextStage+'/'+def.maxStage+'）');
+  return q;
+}
+/** Tag stage-1 derived quests with V5 series when spawned from incidents */
+function v5TagDerivedSeries(q){
+  if(!q||q.series&&String(q.series).indexOf('v5_')===0)return q;
+  const s=v5SeriesFromDtype(q.dtype);
+  if(s){q.series=s;q.stage=Math.max(1,Number(q.stage)||1);q.v5Chain=true;}
+  return q;
+}
+
+function v5RenderWorldReport(){
+  const host=document.getElementById('v5WorldReportBody');
+  if(!host||!S)return;
+  const rep=S._v5LastWorldReport||S.v5Chain?.lastReport;
+  if(S._v5LastWorldReport){v5EnsureChainState(S).lastReport=S._v5LastWorldReport;}
+  if(!rep){host.textContent='まだ依頼完了の報告はありません。';return;}
+  const lines=[];
+  lines.push('Day '+rep.day+' ／ '+(rep.region||'')+' ／ '+(rep.questTitle||''));
+  if(rep.series)lines.push('系列: '+rep.series+' 段階'+(rep.stage||1)+'/3 ／ 結果: '+(rep.outcome||''));
+  lines.push('報酬: '+rep.rewardGold+'（預託金・二重なし）');
+  lines.push('【実際に変わった】 '+(rep.changed&&rep.changed.length?rep.changed.join('、'):'なし'));
+  lines.push('【変わらなかった】 '+(rep.unchanged&&rep.unchanged.length?rep.unchanged.join('、'):'なし'));
+  if(rep.note)lines.push(rep.note);
+  host.textContent=lines.join('\n');
+}
+/** Test helper: seed a stage-1 open derived quest for each chain type without inventing world events.
+ *  Only creates quests if payer exists. Does not fabricate incident history entries as "already happened"
+ *  beyond what is needed for causeId linkage; uses synthetic causeId prefixed v5_test_ so they are distinguishable.
+ */
+function v5TestSeedChainOffers(){
+  if(!S||S.away||S.battle){lg('【V5試験】拠点でのみ実行。');return false;}
+  const a=v4EnsureAutonomy(S);
+  if(!a)return false;
+  const region=S.world?.region||'灰風平原';
+  const kinds=[['v5_caravan','護衛輸送'],['v5_raid','調査回収'],['v5_guard','資材補給']];
+  let n=0;
+  for(const [series,dtype] of kinds){
+    if((a.derivedQuests||[]).some(q=>q&&q.series===series&&(q.status==='open'||q.status==='active')))continue;
+    const live=(a.derivedQuests||[]).filter(q=>q&&(q.status==='open'||q.status==='active'));
+    if(live.length>=3)break;
+    const payer=v4PickPayer(S,region,null);
+    if(!payer){lg('【V5試験】'+series+' 出資者なし');continue;}
+    const def=V5_CHAIN_DEFS[series];
+    const canPay=Math.max(0,Number(payer.gold)||0);
+    if(canPay<3){lg('【V5試験】'+series+' 出資不足');continue;}
+    let rewardGold=Math.min(def.rewardBase,canPay);
+    payer.gold=canPay-rewardGold;payer._escrow=(Number(payer._escrow)||0)+rewardGold;
+    const day=Number(S.day)||1;
+    const id='dq_v5_test_'+series+'_'+day+'_'+n;
+    const q={id,dtype,title:region+'の'+def.titles[1],desc:def.descs[1]+'（試験用掲示）',region,
+      causeId:'v5_test_'+series+'_'+day,agentId:null,payerId:payer.id,rewardGold,needGoods:def.needGoods,
+      status:'open',createdDay:day,dueDay:day+14,derived:true,series,stage:1,escrowed:true,_rewarded:false,v5Chain:true,v5Test:true};
+    a.derivedQuests.push(q);n++;
+  }
+  v4CapDerivedQuests(a);v4RenderDerivedQuests();try{v5RenderWorldReport();}catch(e){}v5RenderWorldReport();
+  lg('【V5試験】連鎖入口を'+n+'件掲示（実在出資者・預託のみ。架空の発生済み世界事件は表示しない）。');
+  render();save();return n>0;
+}
+
 
 function v4ApplyPostwarToAgents(state, postwar){
   if(!state||!postwar)return;
@@ -2161,7 +2380,9 @@ function v4RenderDerivedQuests(){
         const b=document.createElement('b');b.textContent=String(q.title||'');
         h.appendChild(b);
         const sp=document.createElement('span');sp.className='muted';
-        sp.textContent=' ['+q.dtype+'／'+(q.status==='active'?'進行中':q.status==='done'?'達成・帰還可':'受注可')+']';
+        const stageLbl=q.stage?(' 段階'+q.stage+'/3'):'';
+        const seriesLbl=(q.series&&String(q.series).indexOf('v5_')===0)?({'v5_caravan':'商隊','v5_raid':'襲撃','v5_guard':'警備'}[q.series]||'')+'／':'';
+        sp.textContent=' ['+seriesLbl+q.dtype+stageLbl+'／'+(q.status==='active'?'進行中':q.status==='done'?'達成・帰還可':'受注可')+']';
         h.appendChild(sp); card.appendChild(h);
         const d=document.createElement('p');d.className='s';
         d.textContent=(q.desc||'')+' 期限Day'+q.dueDay+'／報酬'+q.rewardGold+(q.needGoods?'／資材'+q.needGoods:'')+'／'+q.region;
@@ -2183,11 +2404,15 @@ function v4RenderWorldNpcPanel(){
   const qret=document.getElementById('v4QuickReturn');
   if(qret)qret.hidden=!(S?.away&&!S?.battle&&S?.quest?.derived&&S?.quest?.done&&!S?.v4Events?.active);
   try{v4RenderAutonomous();}catch(e){}
-  try{v4RenderDerivedQuests();}catch(e){}
+  try{v4RenderDerivedQuests();try{v5RenderWorldReport();}catch(e){}}catch(e){}
   const post=document.getElementById('v4PostwarStatus');
   if(post&&S?.v4Events?.autonomy){
     const known=(S.v4Events.autonomy.postwar||[]).filter(p=>p&&v4KnownRegion(S,p.region)).slice(-5);
-    post.textContent=known.length?known.map(p=>'Day'+p.day+'／'+p.region+'：'+p.kind+(p.agentId?'／'+p.agentId:'')).join('\n'):'訪問地域の戦後記録はまだありません。';
+     const labels={ceasefire:'停戦',info_truce:'情報交換による休戦',surrender:'降伏',mutual_withdraw:'相互撤収'};
+     post.textContent=known.length?known.map(p=>{
+       const agent=(S.v4Events.autonomy.agents||[]).find(ag=>ag&&ag.id===p.agentId);
+       return 'Day'+p.day+'／'+p.region+'：'+(labels[p.kind]||'戦闘後の合意')+(p.agentId?'／'+v5AgentNarrativeLabel(agent):'');
+     }).join('\n'):'訪問地域の戦後記録はまだありません。';
   }
 }
 
@@ -6459,6 +6684,9 @@ function migrateSave(input){
     next.uxGatherTask.needed=2;
     next.uxGatherTask.reward=next.uxGatherTask.kind==='herb'?8:7;
   }
+  // V5 Phase1: additive chain lineage; old saves get empty defaults (no version bump)
+  if(!next.v5Chain||typeof next.v5Chain!=='object')next.v5Chain={lineage:{},lastReport:null};
+  if(!next.v5Chain.lineage||typeof next.v5Chain.lineage!=='object')next.v5Chain.lineage={};
   // HQ unified journey additive Save fields; do not change Save version or legacy keys.
   next.uxJourneyMode=['quest','free'].includes(next.uxJourneyMode)?next.uxJourneyMode:'free';
   if(!next.uxWarehouse||typeof next.uxWarehouse!=='object'||Array.isArray(next.uxWarehouse))next.uxWarehouse={};
@@ -6803,7 +7031,7 @@ function render(){
   try{ v4OnBattleRenderHook(); }catch(e){console.warn('V4 negotiation render',e);} // V4 negotiation UI refresh
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
-  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
+  try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();v5RenderLocalEpisode();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -8558,7 +8786,9 @@ function uxAskLocal(){
         return 'この土地の旅人なら、'+uxCurrentSite()+'を通る道の状態を見てから次の行き先を決める。私にも遠方の確かな情報はない。';})());
   S.uxFieldTalkDay=S.day;
   const person=uxLocalContact(region),world=uxRegionRecord(region);
-  const claim='【'+person.name+'／'+person.role+'】「'+info+'」'+person.motive;
+  const completed=(Array.isArray(S.uxFieldJobHistory)?S.uxFieldJobHistory:[]).filter(h=>h&&h.region===region&&h.status==='success'&&Number(h.completedDay)<=S.day).slice(-1)[0];
+  const prior=completed?'／あなたが以前この地域で'+(completed.type==='survey'?'地形調査':'採集')+'を納品したことを伝えた。相手の反応や効果は確認していない。':'';
+  const claim='【'+person.name+'／'+person.role+'】「'+info+'」'+person.motive+prior;
   S.uxLastTalk={region,day:S.day,site:uxCurrentSite(),text:claim,source:person.role};
   S.uxLocalTalkHistory=Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[];
   S.uxLocalTalkHistory.push(S.uxLastTalk);S.uxLocalTalkHistory=S.uxLocalTalkHistory.slice(-40);
@@ -8612,6 +8842,79 @@ function uxAddJourneyNote(note){
   if(S.uxJourney?.status==='in-progress'){
     S.uxJourney.notes=Array.isArray(S.uxJourney.notes)?S.uxJourney.notes:[];
     S.uxJourney.notes.push(note);S.uxJourney.notes=S.uxJourney.notes.slice(-30);
+  }
+}
+/* V5 contact slice: the region contact already exists in V4.
+   Never fabricate conversations, alter world state, consume RNG, or create Save fields. */
+function v5RenderContact(){
+  const card=document.getElementById('v5ContactCard');
+  if(!card)return;
+  if(!S||!S.away){card.hidden=true;return;}
+  card.hidden=false;
+  const region=activeRegion(S);
+  const person=uxLocalContact(region);
+  const node=document.getElementById('v5ContactPerson');
+  const history=document.getElementById('v5ContactHistory');
+  if(node)node.textContent=person.name+'（'+person.role+'） — '+person.motive;
+  if(!history)return;
+  const talks=Array.isArray(S.uxLocalTalkHistory)
+    ? S.uxLocalTalkHistory.filter(h=>h&&h.region===region&&Number.isFinite(Number(h.day))&&Number(h.day)<=Number(S.day))
+    : [];
+  const last=talks[talks.length-1];
+  if(!last){history.textContent='まだ話を聞いていない。下の「地元の人に話を聞く」で、この土地で得られる情報を確かめられる。';return;}
+  const day=Number(last.day);
+  const again=talks.length>1?'再訪して話を聞いた記録がある。':'以前話を聞いた記録がある。';
+  history.textContent=again+' 記録 '+talks.length+'回／最後はDay '+day+
+    (last.site?'・'+String(last.site):'')+'。記録は実際に聞いた会話だけを数える。'+
+    (S.uxFieldTalkDay===S.day?' 今日は相談済み。翌日なら改めて話を聞ける。':' 今日は新しい話を聞ける。');
+}
+/* A three-beat local episode derived from actions that ALREADY exist: real talk,
+   local work acceptance, and real delivery. No new job, reward, Save field or simulation Tick. */
+function v5RenderLocalEpisode(){
+  const panel=document.getElementById('v5EpisodePanel');
+  if(!panel)return;
+  if(!S||!S.away){panel.hidden=true;return;}
+  panel.hidden=false;
+  const region=activeRegion(S),contact=uxLocalContact(region),day=Math.max(1,Math.floor(Number(S.day)||1));
+  const history=Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[];
+  const talked=history.filter(h=>h&&h.region===region&&Number.isSafeInteger(Number(h.day))&&Number(h.day)>=1&&Number(h.day)<=day);
+  const first=talked[0],last=talked[talked.length-1];
+  const active=S.uxFieldJob?.status==='active'&&S.uxFieldJob.region===region?S.uxFieldJob:null;
+  const jobs=Array.isArray(S.uxFieldJobHistory)?S.uxFieldJobHistory:[];
+  const done=jobs.filter(h=>h&&h.region===region&&h.status==='success'&&
+    Number.isSafeInteger(Number(h.completedDay))&&Number(h.completedDay)<=day&&
+    (!first||Number(h.completedDay)>=Number(first.day))).slice(-1)[0];
+  const expired=jobs.filter(h=>h&&h.region===region&&h.status==='expired').slice(-1)[0];
+  const area=uxRegionRecord(region);
+  const reason=area.safety!=null&&area.safety<45?'道の安全が落ちている。':
+    area.logistics!=null&&area.logistics<45?'荷の行き来が細っている。':
+    '街道をめぐる事情は日々変わる。';
+  const name=document.getElementById('v5EpisodeTitle'),step=document.getElementById('v5EpisodeStep');
+  const story=document.getElementById('v5EpisodeStory'),next=document.getElementById('v5EpisodeNext');
+  if(!name||!step||!story||!next)return;
+  name.textContent=contact.name+'と'+region+'の仕事';
+  if(!talked.length){
+    step.textContent='第1段階／土地の人に会う';
+    story.textContent=contact.name+'は'+contact.motive+' '+reason+' 本人から聞くまでは、詳しい事情は分からない。';
+    next.textContent='次の行動：「地元の人に話を聞く」。噂と事実を区別して、現地の手掛かりを得る。';
+  }else if(active){
+    step.textContent='第2段階／現地で行動する';
+    const kind=active.type==='survey'?'地形調査':'採集';
+    const goal=Math.max(1,Number(active.goal)||2),progress=Math.min(goal,Math.max(0,Number(active.progress)||0));
+    story.textContent='Day '+last.day+'に'+contact.name+'から話を聞いた。'+kind+'の現地仕事を実行中（'+progress+'/'+goal+'）。'+
+      (day>Number(active.dueDay)?'期限を過ぎている。':'納品期限はDay '+active.dueDay+'。');
+    next.textContent=progress>=goal?'次の行動：「成果を納める」。'+(active.type==='gather'?'実物の素材が必要。':'')+' 報酬は既存の現地仕事で一度だけ確定する。':
+      '次の行動：「'+(active.type==='survey'?'現地を調査する':'採集する')+'」。食料・水・疲労と周囲の事件に注意する。';
+  }else if(done){
+    step.textContent='第3段階／成果と再訪';
+    story.textContent='Day '+done.completedDay+'、この土地で'+(done.type==='survey'?'地形調査':'採集')+'の仕事を納品した。'+
+      '受け取った報酬は'+done.reward+'通貨（既存の実績）。周囲の状態は他の出来事でも変化するため、仕事だけが原因とは限らない。';
+    next.textContent='次の行動：帰還して旅の記録を読む／日を改めて'+contact.name+'の話を聞き、変化を確かめる。';
+  }else if(talked.length){
+    step.textContent='第2段階／自分の行動を選ぶ';
+    story.textContent='Day '+last.day+'、'+contact.name+'の話を聞いた。'+reason+
+      (expired?' 以前の現地仕事は期限切れになった。':'');
+    next.textContent='次の行動：下の「現地の小仕事」で採集か地形調査を選び、「仕事を引き受ける」。既存の仕事なので報酬の重複はない。';
   }
 }
 function uxRenderJourney(){
@@ -8684,10 +8987,12 @@ function uxRenderJourney(){
   if(txt&&S.uxLastJourney){const j=S.uxLastJourney,b=j.depart,a=j.arrival;
     const names={gold:'通貨',food:'食料',water:'水',fatigue:'疲労',injury:'負傷'};const diff=(key,unit='')=>{const delta=(a[key]||0)-(b[key]||0);return names[key]+'：'+b[key]+'→'+a[key]+' ('+(delta>=0?'+':'')+delta+unit+')';};
     let world=['safety','logistics','passability'].map(k=>b.local?.[k]!=null&&a.local?.[k]!=null?({safety:'治安',logistics:'物流',passability:'通行状況'}[k])+' '+b.local[k]+'→'+a.local[k]:null).filter(Boolean).join('／');
+    const witnessed=(Array.isArray(S.uxLocalTalkHistory)?S.uxLocalTalkHistory:[]).filter(h=>h&&h.region===j.region&&Number(h.day)>=Number(j.departDay)&&Number(h.day)<=Number(j.returnDay));
+    const met=witnessed.length?'\nこの旅で話を聞いた人：'+uxLocalContact(j.region).name+'（'+witnessed.length+'回）':'\nこの旅での住人との会話記録：なし';
     txt.textContent=j.region+'を'+(j.mode==='free'?'自由に旅した':'依頼で訪ねた')+'。Day '+j.departDay+'→'+j.returnDay+'、結果：'+j.outcome+'。\n'+
       [diff('gold','通貨'),diff('food'),diff('water'),diff('fatigue')].join(' ／ ')+
       '\n地域状態（出発・帰還の観測値）：'+(world||'比較不能')+'。他の出来事や時間経過も影響するため、すべてが自身の功績とは限りません。'+
-      '\n旅の記録：'+(j.notes?.length?j.notes.join('／'):'特記事項なし');
+      met+'\n旅の記録：'+(j.notes?.length?j.notes.join('／'):'特記事項なし');
   }
 }
 function uxRenderContextUI(){
