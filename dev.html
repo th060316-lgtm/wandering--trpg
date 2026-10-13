@@ -604,7 +604,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   <details class="c" id="simPanel">
     <summary>世界の詳しい記録・追加操作</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
-    <div class="row"><button type="button" onclick="simDebugDrought()">GM旱魃を投入（制限あり）</button>
+    <div class="row"><!-- GM旱魃の手動投入は開発者コンソール専用。simDebugDrought()本体は保全する。 -->
     <button type="button" onclick="simExportSave()">Saveファイルを書出</button>
     <label class="s">Saveファイルを読込（V1.0対応）<input type="file" accept=".json,application/json" onchange="simImportSave(this)"></label></div>
     <pre id="simStatus" class="s" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
