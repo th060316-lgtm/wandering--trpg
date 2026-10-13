@@ -321,7 +321,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
       <p class="s">1〜30日、毎日同じ行動を続けます。途中で必要な食料・水・費用が足りないと停止。食事と水の消費、疲労、収入、世界の経過を反映します。</p>
       <label>暮らす日数 <input type="number" id="uxLifeDays" min="1" max="30" step="1" value="3" oninput="uxRenderLifePreview()" style="width:85px"></label>
       <label>毎日の行動 <select id="uxLifeMode" onchange="uxRenderLifePreview()">
-        <option value="work">日雇い労働（食事・水支給、日給2通貨、疲労+5）</option>
+        <option value="work">日雇い労働（食事・水支給、通常日給2／高疲労は軽作業1）</option>
         <option value="gather">近郊採集（素材と食料を探す、疲労+8）</option>
         <option value="rest">療養（食・水と宿代1通貨/日、疲労・負傷回復）</option>
         <option value="observe">地域調査（食・水1/日、疲労+2、噂や地域知識）</option>
@@ -410,7 +410,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2>依頼</h2>
       <div class="row">
-        <button type="button" id="btnGen" onclick="genQuest()">依頼生成</button>
+        <button type="button" id="btnGen" onclick="genQuest()">依頼掲示を更新</button>
         <button type="button" id="btnStart" onclick="uxStartJourney(true)">依頼開始</button>
         <button type="button" id="btnReturn" onclick="returnTown()">帰還</button>
         <button type="button" id="btnRest" onclick="townRest()">有料で休養・宿泊</button>
@@ -418,7 +418,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
     </div>
     <div id="quest" class="muted"></div>
     <div id="questOffers" class="g" style="margin-top:8px"></div>
-    <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道事件の派生依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。商隊／襲撃／警備は成功後に次段階が連鎖します。</p>
+    <div class="c" id="v4DerivedQuestCardAdv" style="margin-top:10px"><h3>街道の追加依頼</h3><div id="v4DerivedQuestBoardAdv" class="muted"></div><p class="s">世界タブと同じ掲示。ここから受注して出発できます。商隊／襲撃／警備は成功後に次段階が連鎖します。</p>
 </div>
   </div>
 
@@ -598,7 +598,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   </div>
 
   <div class="c" id="v4AutonomyCard"><h2>訪問した地域の商隊・街道情勢</h2><div id="v4AutonomyStatus" class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
-  <div class="c" id="v4DerivedQuestCard"><h2>街道事件から発生した派生依頼</h2><div id="v4DerivedQuestBoard" class="muted"></div><p class="s">通常の依頼掲示を置き換えません。最大3件。受注は拠点から。商隊／襲撃／警備の連鎖は成功後に次段階が掲示されます。</p></div>
+  <div class="c" id="v4DerivedQuestCard"><h2>街道事件から届いた依頼</h2><div id="v4DerivedQuestBoard" class="muted"></div><p class="s">通常の依頼掲示を置き換えません。最大3件。受注は拠点から。商隊／襲撃／警備の連鎖は成功後に次段階が掲示されます。</p></div>
   <div class="c" id="v5WorldReportCard"><h2>直近の依頼結果と世界変化</h2><div id="v5WorldReportBody" class="muted">まだ依頼完了の報告はありません。</div><p class="s">実際に変わった項目と変わらなかった項目を区別して表示します。報酬の二重適用はありません。</p></div>
   <div class="c" id="v4PostwarCard"><h2>戦後の記録（訪問済み）</h2><div id="v4PostwarStatus" class="muted" style="white-space:pre-wrap"></div></div>
   <details class="c" id="simPanel">
@@ -2391,8 +2391,9 @@ function v5ContactPhase(state, region){
   const anySuccess=doneQs.length>0||jobDone;
   const anyFail=failQs.length>0||jobFail;
   const daysSinceLast=day-lastDay;
-  // Long revisit: at least 14 days after first talk and some prior interaction
-  if(talks.length>=2&&daysSinceLast>=14){
+  // A single prior conversation is enough for a first long-term revisit.
+  // Compare with the snapshot recorded during that last conversation.
+  if(talks.length>=1&&daysSinceLast>=14){
     // Check real regional improvement via existing metrics if available
     const improved=v5RegionImproved(state,region,firstDay,day);
     return improved?'revisit_better':'revisit_same';
@@ -2721,14 +2722,14 @@ function v4RenderDerivedQuests(){
   const a=S.v4Events?.autonomy;
   for(const t of targets)t.replaceChildren();
   if(!a){
-    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='派生依頼は世界の事件から発生します。';t.appendChild(p);}
+    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='街道の出来事に応じて新しい依頼が届きます。';t.appendChild(p);}
     return;
   }
   const open=(a.derivedQuests||[]).filter(q=>q&&(q.status==='open'||q.status==='active')&&
       (q.status==='active'||v4KnownRegion(S,q.region)||v4HasDerivedRumor(S,q)))
     .sort((x,y)=>(x.status==='active'?0:1)-(y.status==='active'?0:1));
   if(!open.length){
-    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='現在、掲示中の派生依頼はありません。';t.appendChild(p);}
+    for(const t of targets){const p=document.createElement('p');p.className='muted';p.textContent='現在、掲示中の追加依頼はありません。';t.appendChild(p);}
     return;
   }
   for(const q of open.slice(0,3)){
@@ -2813,6 +2814,9 @@ function v4IsEligible(def){
   if(el.minDay!=null && (S.day||1)<el.minDay) return false;
   if(el.nightOrCamp===true && S.uxNightEventReadyDay!==S.day)return false;
   if(Array.isArray(el.regions) && !el.regions.includes(activeRegion(S))) return false;
+  // A046's standalone field draw invents a surrender with no opponent.
+  // Keep its definition for legacy content, but use the live F04 combat negotiation only.
+  if(def.eventId==='v4_a046_surrender_value')return false;
   if(def.eventId==='v4_b079_rain_skill'&&!/雨/.test(String(S.res?.weather||'')))return false;
   if(def.eventId==='v4_a017_plague_ferry'&&activeRegion(S)!=='セラ川下流湿地')return false;
   const cd=v4.cooldowns[def.eventId];
@@ -7415,11 +7419,11 @@ function uxRenderFirstJourneyCoach(){
   const pulse=document.getElementById('uxWorldPulseLine');
   if(!step||!next||!btn||!pulse)return;
   let phase='1/4 依頼を選ぶ';
-  let detail='依頼候補を見比べ、やりたい仕事を選ぼう。最初は探索や採取を選ぶと、戦闘なしで達成できる場合があります。';
+  let detail='初めての旅なら調査・採取など戦闘を避けられる仕事がおすすめ。討伐は危険で、主人公が倒れると携行品を失う。敗北後も日雇い・採集で立て直せます。';
   let target='uxQuestCard';
   if(S.battle){
     phase='3/4 戦闘の判断';
-    detail='敵の位置と射程を確認。「攻撃/接近の案」を確認してから1ターン実行。交渉可能ならボタンも表示されます。';
+    detail='主人公が倒れると携行品を失います。敵の位置・射程・HPを確認し、危険なら撤退や交渉も検討。「攻撃/接近の案」を確認してから1ターン実行。';
     target='battleCommandCard';
   } else if(S.v4Events?.active){
     phase='3/4 道中の出来事';
@@ -7443,7 +7447,7 @@ function uxRenderFirstJourneyCoach(){
     target='uxQuestCard';
   } else if(S.quest){
     phase='1/4 依頼と目的地を確認';
-    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼候補を確認してから、旅の目的を「依頼」にして出発しましょう。';
+    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼を確認し、旅の目的を「依頼」にして出発しましょう。討伐は主人公が倒れると携行品を失う危険があります。初心者は調査・採取や撤退も選べます。';
     target='uxQuestCard';
   }
   step.textContent=phase; next.textContent=detail;
@@ -8756,7 +8760,7 @@ function uxShowLifePanel(){
 }
 function uxLifeConfig(mode){
   return {
-    work:{label:'日雇い労働',gold:2,fatigue:5,food:0,water:0,detail:'日給2通貨。雇い主から一行分の食事と水を現物支給し、当日全員が消費する。'},
+    work:{label:'日雇い労働',gold:2,fatigue:5,food:0,water:0,detail:'通常日給2通貨・疲労+5。疲労90以上は休憩込みの軽作業に切替（日給1通貨・疲労-8）。雇い主の食事・水支給はどちらも維持。'},
     gather:{label:'近郊採集',gold:0,fatigue:8,food:1,water:1,detail:'一行分の食料・水と余剰1単位を回収し、全員分の食・水を消費。携行上限32、素材は1日につき1つ。'},
     rest:{label:'療養',gold:-1,fatigue:-12,food:-1,water:-1,detail:'毎日宿代1通貨と一行の人数分の食料・水を消費。負傷は3回復、HPも回復。'},
     observe:{label:'地域調査',gold:0,fatigue:2,food:-1,water:-1,detail:'毎日一行の人数分の食料・水を消費。地域知識は1日2点上昇（最大100）。'}
@@ -8776,7 +8780,7 @@ function uxRenderLifePreview(){
   if(!s){out.textContent=base+'新世界開始後に実行できます。';return;}
   const funds=Number(s.gold)||0,food=Number(s.res?.food)||0,water=Number(s.res?.water)||0;
   out.textContent=base+'【現在】通貨'+funds+'／食料'+food+'／水'+water+'／疲労'+(s.res?.fatigue||0)+'.\n'+
-    (g.gold<0?'全日程の宿代の目安'+(-g.gold*x.days)+'通貨。':'収入の目安'+(g.gold*x.days)+'通貨（中断時は実行日数分のみ）。')+
+    (g.gold<0?'全日程の宿代の目安'+(-g.gold*x.days)+'通貨。':x.mode==='work'?'通常なら最大'+(g.gold*x.days)+'通貨。疲労90以上は軽作業の日給1通貨に切り替わり、実際の収入は疲労と中断で変わります。':'収入の目安'+(g.gold*x.days)+'通貨（中断時は実行日数分のみ）。')+
     '\n不足した資源は自動生成・自動購入しません。途中で実行不可能ならその日の前で停止します。'+
     (x.mode==='gather'&&uxForageRestricted(s)?'\n【法令注意】この地域の採集には制限あり。合法採取の確認チェックが必要です。':'');
 }
@@ -8808,8 +8812,11 @@ function uxOneLifeDay(mode){
     S.res.food-=dailyNeed;S.res.water-=dailyNeed;
     if(mode==='gather'){S.res.food=Math.min(32,S.res.food);S.res.water=Math.min(32,S.res.water);}
   }
-  S.gold+=c.gold;
-  S.res.fatigue=cl(S.res.fatigue+c.fatigue+(limit?.needAck?2:0),0,100);
+  // At high fatigue, accept only lower-paid, recovery-oriented light work.
+  // Crucial: even at zero gold and zero supplies, in-kind meals remain available.
+  const lightWork=mode==='work'&&S.res.fatigue>=90;
+  S.gold+=lightWork?1:c.gold;
+  S.res.fatigue=cl(S.res.fatigue+(lightWork?-8:c.fatigue)+(limit?.needAck?2:0),0,100);
   if(mode==='rest'){
     S.res.injury=cl((S.res.injury||0)-3,0,100);
     for(const u of S.party)u.hp=Math.min(u.maxHp,Math.max(1,u.hp)+Math.max(1,Math.ceil(u.maxHp*.08)));
@@ -9154,6 +9161,8 @@ function uxAskLocal(){
         if(wr.safety!=null&&wr.safety<45)return 'この辺は人の行き来に不安がある。知らない道を急ぐのは勧めない。';
         if(wr.logistics!=null&&wr.logistics<45)return '最近の荷の出入りが細く、物資を手に入れにくい。補給のあてを確かめてから進んでほしい。';
         return 'この土地の旅人なら、'+uxCurrentSite()+'を通る道の状態を見てから次の行き先を決める。私にも遠方の確かな情報はない。';})());
+  // Determine what the NPC knows BEFORE this action adds a new conversation.
+  const dialoguePhaseBeforeTalk=v5ContactPhase(S,region);
   S.uxFieldTalkDay=S.day;
   const person=uxLocalContact(region),world=uxRegionRecord(region);
   const completed=(Array.isArray(S.uxFieldJobHistory)?S.uxFieldJobHistory:[]).filter(h=>h&&h.region===region&&h.status==='success'&&Number(h.completedDay)<=S.day).slice(-1)[0];
@@ -9165,10 +9174,10 @@ function uxAskLocal(){
   try{v5RecordTalk(S,region);}catch(e){}
   // Phase2: prefer NPC memory dialogue when available (stub until HQ story selection)
   try{
-    const phase=v5ContactPhase(S,region);
-    const line=v5SelectNpcLine(region,phase);
+    const line=v5SelectNpcLine(region,dialoguePhaseBeforeTalk);
     const claim2='【'+person.name+'／'+person.role+'】「'+line+'」';
     S.uxLastTalk.text=claim2+(prior||'');
+    S.uxLastTalk.dialoguePhase=dialoguePhaseBeforeTalk;
     // keep original info as secondary note only in journey log, not overwrite player-facing claim
   }catch(e){}
   uxAddJourneyNote('Day'+S.day+'：'+person.name+'から現地の話を聞いた（'+uxCurrentSite()+'）。');
@@ -9260,7 +9269,7 @@ function v5RenderContact(){
   const causes=v5KnownCauseIds(S,region);
   const causeNote=causes.length?'／この土地に関わる出来事の記録あり':'';
   history.textContent='状態：'+phaseLabel+'。記録 '+talks.length+'回／最後はDay '+day+
-    (last.site?'・'+String(last.site):'')+'。記録は実際に聞いた会話だけを数える。'+
+    (last.site?'・'+String(last.site):'')+'。'+
     (S.uxFieldTalkDay===S.day?' 今日は相談済み。翌日なら改めて話を聞ける。':' 今日は新しい話を聞ける。')+causeNote;
 }
 
@@ -9315,17 +9324,17 @@ function v5RenderLocalEpisode(){
     const goal=Math.max(1,Number(active.goal)||2),progress=Math.min(goal,Math.max(0,Number(active.progress)||0));
     story.textContent=line+' Day '+last.day+'に話を聞いた。'+kind+'の現地仕事を実行中（'+progress+'/'+goal+'）。'+
       (day>Number(active.dueDay)?'期限を過ぎている。':'納品期限はDay '+active.dueDay+'。')+chainHint;
-    next.textContent=progress>=goal?'次の行動：「成果を納める」。'+(active.type==='gather'?'実物の素材が必要。':'')+' 報酬は既存の現地仕事で一度だけ確定する。':
+    next.textContent=progress>=goal?'次の行動：「成果を納める」。'+(active.type==='gather'?'実物の素材が必要。':'')+' 成果を納めて仕事を終える。':
       '次の行動：「'+(active.type==='survey'?'現地を調査する':'採集する')+'」。食料・水・疲労と周囲の事件に注意する。';
   }else if(done){
     step.textContent='第3段階／成果と再訪';
     story.textContent=line+' Day '+done.completedDay+'、この土地で'+(done.type==='survey'?'地形調査':'採集')+'の仕事を納品した。'+
-      '受け取った報酬は既存の仕組みどおり一度だけ。'+causeHint+chainHint;
-    next.textContent='再訪時は情勢と前回の記録に応じて話が変わる。未発生の事件は断定しない。';
+      '報酬はすでに受け取っている。'+causeHint+chainHint;
+    next.textContent='またこの街道を訪ねれば、新しい話が聞けるかもしれない。';
   }else if(expired){
     step.textContent='未完了・期限切れ';
     story.textContent=line+' 以前の現地仕事は期限切れとなった。報酬は発生していない。'+reason+chainHint;
-    next.textContent='新たに仕事を受けるか、別の土地へ向かうかを選べる。非介入の結果も世界に残る。';
+    next.textContent='別の仕事を探すか、先の土地へ進むかを選べる。';
   }else{
     // talked but no field-job active/done — show phase-aware dialogue + chain status
     const phaseStep={
@@ -9339,8 +9348,8 @@ function v5RenderLocalEpisode(){
     }[phase]||'土地の話を確かめる';
     step.textContent=phaseStep;
     story.textContent=line+' '+reason+causeHint+chainHint;
-    next.textContent=phase==='unresolved'?'未完了の依頼や撤退の記録がある。無理に根絶を語らない。':
-      phase.indexOf('revisit')===0?'長期の再訪。実際の数値変化がある場合だけ「良くなった」と表現する。':
+    next.textContent=phase==='unresolved'?'まだ気掛かりな仕事が残っている。今できることを確かめよう。':
+      phase.indexOf('revisit')===0?'久しぶりの街道で、この土地の今の様子を確かめてみよう。':
       '次の行動：「地元の人に話を聞く」または既存の依頼・現地仕事を進める。';
   }
 }
@@ -9356,10 +9365,16 @@ function uxRenderJourney(){
   const dest=S.travelDest||S.world?.region||'?',home=S.world?.region||'?';
   const days=uxTravelDays(S.expeditionPlan,dest,home),q=S.quest;
   const preview=document.getElementById('uxJourneyPreview');
+  const trip=v18TravelCost(S,days*2);
+  const onSiteDays=2,onsiteNeed=Math.max(1,S.party?.length||1)*onSiteDays;
+  const needFood=trip.food+onsiteNeed,needWater=trip.water+onsiteNeed;
+  const currentFood=Number(S.res.food)||0,currentWater=Number(S.res.water)||0;
+  const supplyForecast='往復'+days*2+'日＋現地活動'+onSiteDays+'日なら、食料約'+needFood+'・水約'+needWater+
+    '（現在 食料'+currentFood+'・水'+currentWater+'）／不足見込み 食料'+Math.max(0,needFood-currentFood)+'・水'+Math.max(0,needWater-currentWater)+'。';
   if(preview)preview.textContent=S.away?'現地滞在中です。出発方法は帰還後に変更できます。':
     '目的地 '+dest+' ／ '+(S.uxJourneyMode==='quest'?'依頼 '+(q?.title||'未選択'):'依頼なしで自由行動')+
-    ' ／ '+(PLAN_DEFS[S.expeditionPlan]?.label||'安全')+' 片道'+days+'日（往復'+days*2+'日）。'+
-    '一行'+S.party.length+'人の食料・水が毎日減ります。'+(S.uxJourneyMode==='quest'&&q?'':' 到着後は目的を変更せず活動できます。');
+    ' ／ '+(PLAN_DEFS[S.expeditionPlan]?.label||'安全')+' 片道'+days+'日（往復'+days*2+'日）。\n'+
+    supplyForecast+'\n目安には戦闘・追加滞在・迂回の追加日数を含みません。現地補給は保証されません。'+(S.uxJourneyMode==='quest'&&q?'':' 到着後も行動を選べます。');
   // Travel must not require looking for an invisible checkpoint control.
   const crossing=evaluateBorderCrossing(S,dest,home);
   const inline=document.getElementById('uxBorderInlineBox'),crossSel=document.getElementById('uxBorderInline');
@@ -9397,7 +9412,7 @@ function uxRenderJourney(){
   if(fStatus&&S.away)fStatus.textContent='現在地：'+activeRegion(S)+' ／ Day '+S.day+' ／ 食'+S.res.food+' 水'+S.res.water+
     ' 疲労'+S.res.fatigue+' 負傷'+S.res.injury+' ／ '+(S.uxJourney?.mode==='free'?'自由に旅している':S.quest?.done?'依頼達成済み：帰還か滞在を選べる':'依頼中')+
     (S.quest?.type==='採取'&&!S.quest.done?' ／ 採取'+(S.quest.uxGatherProgress||0)+'/2':'')+
-    '\nここでの活動は原則1日単位。食料・水・疲労・世界の時間が実際に変化します。';
+    '\n次の行動：住人に相談 → 小仕事を受ける → 調査・採集 → 成果を納める → 帰還。活動には日数と食料・水が必要です。';
   const siteSel=document.getElementById('uxFieldSite');
   if(siteSel&&S.away){const places=regionProfile(activeRegion(S))?.places||[],site=uxCurrentSite();
     siteSel.innerHTML=places.map(pl=>'<option value="'+v17EscapeHtml(pl)+'"'+(pl===site?' selected':'')+'>'+v17EscapeHtml(pl)+'</option>').join('');
