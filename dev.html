@@ -352,7 +352,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
     <div id="uxAdventureStory" class="ux-story">冒険の現在地を確認しています。</div>
     <div id="uxAdventureHint" class="ux-hint"></div>
     <div id="uxFirstJourneyCoach" aria-label="次にすること" role="status" aria-live="off"><div class="coach-content"><div id="uxFirstJourneyStep" class="coach-step">最初の依頼ガイド</div><p id="uxFirstJourneyNext" class="coach-next">次の行動を確認中</p></div><button type="button" id="uxFirstJourneyGo" onclick="uxFirstJourneyGo()">操作場所を見る</button></div>
-    <button type="button" id="v4QuickReturn" onclick="returnTown()" hidden>達成した派生依頼を精算して帰還する</button>
+    <button type="button" id="v4QuickReturn" onclick="returnTown()" hidden>達成した街道の追加依頼を精算して帰還する</button>
   </div>
   <div class="c ux-lead" id="uxJourneyCard">
     <div class="ux-eyebrow">旅に出る・現地で暮らす・依頼を引き受ける</div>
@@ -602,7 +602,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   <div class="c" id="v5WorldReportCard"><h2>直近の依頼結果と世界変化</h2><div id="v5WorldReportBody" class="muted">まだ依頼完了の報告はありません。</div><p class="s">実際に変わった項目と変わらなかった項目を区別して表示します。報酬の二重適用はありません。</p></div>
   <div class="c" id="v4PostwarCard"><h2>戦後の記録（訪問済み）</h2><div id="v4PostwarStatus" class="muted" style="white-space:pre-wrap"></div></div>
   <details class="c" id="simPanel">
-    <summary>世界の詳しい記録と検証機能（開発用）</summary>
+    <summary>世界の詳しい記録・追加操作</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
     <div class="row"><button type="button" onclick="simDebugDrought()">GM旱魃を投入（制限あり）</button>
     <button type="button" onclick="simExportSave()">Saveファイルを書出</button>
@@ -610,7 +610,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
     <pre id="simStatus" class="s" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
     <h2>因果履歴（最新80件表示・全履歴はSaveへ保存）</h2><div id="simHistory" class="log"></div>
   </details>
-  <details class="ux-tools"><summary>開発版について</summary><p class="s">この世界は開発中です。旧版で使えた一部の仕組みを引き継ぎながら拡張しています。</p></details>
+  <details class="ux-tools"><summary>このゲームについて</summary><p class="s">この世界では旅先の出来事や暮らしが日々変化します。</p></details>
 
 </section><!-- /f1Pane_world -->
 <section class="f1-pane" id="f1Pane_log" data-f1-pane="log" aria-label="記録・管理">
@@ -2095,18 +2095,18 @@ function v4AfterAutonomyIncidents(state, day){
 }
 
 function v4AcceptDerivedQuest(qid){
-  if(!S||S.away||S.battle){lg('【派生依頼】拠点でのみ受注できます。');return false;}
+  if(!S||S.away||S.battle){lg('【街道の追加依頼】拠点でのみ受注できます。');return false;}
   const a=v4EnsureAutonomy(S),q=(a.derivedQuests||[]).find(x=>x&&x.id===qid&&x.status==='open');
-  if(!q){lg('【派生依頼】対象がないか、処理済みです。');return false;}
-  if(Number(q.dueDay)&&S.day>q.dueDay){v4CloseDerived(S,q,'expired','late_accept');lg('【派生依頼】期限切れ。');render();return false;}
-  if(!v4KnownRegion(S,q.region)){lg('【派生依頼】未確認の噂です。依頼の出所を把握するまで受注できません。');return false;}
+  if(!q){lg('【街道の追加依頼】対象がないか、処理済みです。');return false;}
+  if(Number(q.dueDay)&&S.day>q.dueDay){v4CloseDerived(S,q,'expired','late_accept');lg('【街道の追加依頼】期限切れ。');render();return false;}
+  if(!v4KnownRegion(S,q.region)){lg('【街道の追加依頼】未確認の噂です。依頼の出所を把握するまで受注できません。');return false;}
   if(v4HasActiveUndertaking()||a.derivedQuests.some(x=>x&&x.status==='active')){
-    lg('【派生依頼】別の依頼が進行中です。');return false;
+    lg('【街道の追加依頼】別の依頼が進行中です。');return false;
   }
   const payer=v4FindAgent(S,q.payerId);
   if(!payer||payer.region!==q.region||!q.escrowed||
       (Number(payer._escrow)||0)<Number(q.rewardGold)||q._rewarded){
-    lg('【派生依頼】出資保証を確認できません。');return false;
+    lg('【街道の追加依頼】出資保証を確認できません。');return false;
   }
   q.status='active';q.acceptedDay=S.day;
   const typeMap={'護衛輸送':'護衛','調査回収':'探索','資材補給':'採取'};
@@ -2118,7 +2118,7 @@ function v4AcceptDerivedQuest(qid){
     branchRewarded:false,v4DerivedNoNormalReward:true,
     series:q.series||null,stage:q.stage||1,v5Chain:!!q.v5Chain};
   S.travelDest=q.region;
-  lg('【派生依頼】受注：'+q.title+'（期限 Day'+q.dueDay+'／保証金 '+q.rewardGold+'）');
+  lg('【街道の追加依頼】受注：'+q.title+'（期限 Day'+q.dueDay+'／保証金 '+q.rewardGold+'）');
   render();save();return true;
 }
 
@@ -2127,7 +2127,7 @@ function v4DeclineDerivedQuest(qid){
   const a=v4EnsureAutonomy(S),q=(a.derivedQuests||[]).find(x=>x&&x.id===qid);
   if(!q||q.status!=='open')return;
   v4CloseDerived(S,q,'declined','declined');
-  lg('【派生依頼】辞退：'+q.title);render();save();
+  lg('【街道の追加依頼】辞退：'+q.title);render();save();
 }
 
 function v4CompleteDerivedQuest(state,outcome,opts){
@@ -2206,7 +2206,7 @@ function v4CompleteDerivedQuest(state,outcome,opts){
   }catch(e){console.warn('v5 world report',e);}
   // V5 Phase1 P0-1: multi-stage chain spawn (商隊/襲撃/警備) — only after verified success, no double reward
   try{v5SpawnNextChainStage(state,q);}catch(e){console.warn('v5 chain spawn',e);}
-  lg('【派生依頼】完了：'+q.title+'／預託金から報酬 '+pay);
+  lg('【街道の追加依頼】完了：'+q.title+'／預託金から報酬 '+pay);
   return true;
 }
 
@@ -3832,7 +3832,7 @@ function resolveTurn(){
       if(S.quest){
         if(S.quest.derived){
           if(!v4MarkDerivedProgress(S,'battle_victory')){
-            lg('【派生依頼】戦闘勝利だけでは依頼達成とは認められません。');
+            lg('【街道の追加依頼】戦闘勝利だけでは依頼達成とは認められません。');
           }
         }else S.quest.done=1;
         const qp=questProfile(S.quest.type);
@@ -3842,7 +3842,7 @@ function resolveTurn(){
           lg("採取物の精査で全員に成長ポイント +"+qp.rewardGrowth+"。");
         }
       }
-      lg(S.quest?.derived&&!S.quest.done?'戦闘勝利。ただし派生依頼は未達成。':
+      lg(S.quest?.derived&&!S.quest.done?'戦闘勝利。ただし街道の追加依頼は未達成。':
         S.heroRescuePending?'相打ち勝利。主人公を救出し、依頼達成。':'戦闘勝利。依頼達成。');
       break;
     }
@@ -3970,7 +3970,7 @@ function makeQuestOffer(qType){
 }
 function selectQuestOffer(i){
   if(S.away||S.battle)return;
-  if(v4HasActiveUndertaking())return lg('【派生依頼】進行中の派生を通常依頼で上書きできません。');
+  if(v4HasActiveUndertaking())return lg('【街道の追加依頼】進行中の派生を通常依頼で上書きできません。');
   const q=S.questOffers?.[i];if(!q)return;
   S.quest={...q};
   lg("依頼選択: "+S.quest.title);
@@ -4006,7 +4006,7 @@ function refreshBaseQuestOffers(state,completedQuest=null){
 function genQuest(silent){
   if(!S.world)return;
   if(S.away||S.battle)return lg("帰還してから依頼を生成してくれ。");
-  // 基本3候補は常に維持し、派生依頼は保存（P1）。
+  // 基本3候補は常に維持し、街道の追加依頼は保存（P1）。
   refreshBaseQuestOffers(S);
   // 地域評判による軽い提示差（敵数・報酬示唆・紹介）
   const ri=ensureRegionIntel(S,S.world.region);
@@ -4017,7 +4017,7 @@ function genQuest(silent){
   }
   if(!(S.quest?.derived&&v4EnsureAutonomy(S).derivedQuests.some(q=>q&&q.id===S.quest.derivedId&&q.status==='active'))){
     S.quest={...S.questOffers[0]};
-  }else if(!silent)lg('【派生依頼】進行中の依頼を保持し、通常掲示のみ更新しました。');
+  }else if(!silent)lg('【街道の追加依頼】進行中の依頼を保持し、通常掲示のみ更新しました。');
   simAppendOffers(S);
   if(typeof maybeOrgIntroQuest==='function')maybeOrgIntroQuest(S);
   maybeSpawnWarLiteOffers(S);
@@ -4035,7 +4035,7 @@ function startQuest(){
   if(S.quest.derived){
     const aq=v4EnsureAutonomy(S).derivedQuests.find(q=>q.id===S.quest.derivedId);
     if(!aq||aq.status!=='active'||S.travelDest!==aq.region){
-      lg('【派生依頼】依頼地域が目的地と一致しません。目的地を確認してください。');return;
+      lg('【街道の追加依頼】依頼地域が目的地と一致しません。目的地を確認してください。');return;
     }
   }
   // 目的未設定なら拠点と同地域（域内依頼）
@@ -4254,7 +4254,7 @@ function resolveExploration(choice){
   if(S.quest && ['探索','採取'].includes(S.quest.type)){
     if(S.quest.type==='探索'){
       if(S.quest.derived){
-        if(!v4MarkDerivedProgress(S,'exploration'))lg('【派生依頼】期限・地域・依頼状況を確認してください。');
+        if(!v4MarkDerivedProgress(S,'exploration'))lg('【街道の追加依頼】期限・地域・依頼状況を確認してください。');
       }else S.quest.done=1;
       S.phase='field';
       lg('探索依頼完了。経路を調査した。戦闘せず現地滞在または帰還を選べる。');
@@ -4321,7 +4321,7 @@ function returnTown(){
       const a=v4EnsureAutonomy(S),q=a.derivedQuests.find(x=>x&&x.id===S.quest.derivedId);
       if(q&&q.status==='active')v4CloseDerived(S,q,'failed','return_without_verified_completion');
       S.quest.done=0;
-      lg('【派生依頼】達成条件を確認できないため依頼を失敗扱いで終了し、預託金を返還しました。');
+      lg('【街道の追加依頼】達成条件を確認できないため依頼を失敗扱いで終了し、預託金を返還しました。');
     }
   }
   const completed=!!S.quest?.done;
@@ -4354,7 +4354,7 @@ function returnTown(){
     }else{
       // U02: derived already settled in v4CompleteDerivedQuest — no clearCount/gold/materials
       S.cleared=false;
-      lg("派生依頼の帰還処理完了（通常依頼報酬・達成回数は加算しない）。");
+      lg("街道の追加依頼の帰還処理完了（通常依頼報酬・達成回数は加算しない）。");
       refreshLogisticsBands(S);
       refreshShopPrices(S);
     }
@@ -4385,7 +4385,7 @@ function returnTown(){
     if(finishedQuest?.series==="war_refugee")S.warRefugeeNextOfferDay=S.day+7;
     refreshBaseQuestOffers(S,finishedQuest);
     S.quest={...S.questOffers[0]};
-    lg("次の依頼掲示を更新した（未完の派生依頼は継続）。");
+    lg("次の依頼掲示を更新した（未完の街道の追加依頼は継続）。");
   }
   simAppendOffers(S);
   maybeSpawnDerivedQuest(S);
@@ -4428,7 +4428,7 @@ function regionRouteMods(state){
   const label='街道 通行'+Math.round(pass)+'/安全'+Math.round(safe)+'/敵対'+Math.round(host)+'/天候圧'+Math.round(wp);
   return{travelFatigue,danger,label,pass,safe,host,wp};
 }
-/** V1.2: 依頼結果履歴と派生依頼 */
+/** V1.2: 依頼結果履歴と街道の追加依頼 */
 function recordQuestOutcome(q,outcome){
   if(!q)return;
   if(!Array.isArray(S.questHistory))S.questHistory=[];
@@ -4495,7 +4495,7 @@ function maybeSpawnDerivedQuest(state){
     2:last.place+'の再輸送護衛（警戒強化）',
     3:last.place+'の幹線防衛（最終段階）'
   };
-  // CQA-04: 派生依頼の敵数を単一明示式に統一（最大6）
+  // CQA-04: 街道の追加依頼の敵数を単一明示式に統一（最大6）
   const derived={
     type:'護衛',
     title:titles[nextStage]||(last.place+'の派生護衛'),
@@ -4512,7 +4512,7 @@ function maybeSpawnDerivedQuest(state){
   if(!Array.isArray(state.questOffers))state.questOffers=[];
   state.questOffers.push(derived);
   if(state.sim)state.sim.questLineage[seriesKey]=nextStage;
-  lg('派生依頼が掲示された：'+derived.title+'（系列 '+seriesKey+' 段階'+nextStage+'/3）');
+  lg('街道の追加依頼が掲示された：'+derived.title+'（系列 '+seriesKey+' 段階'+nextStage+'/3）');
 }
 
 
@@ -9015,7 +9015,7 @@ function uxStartJourney(forceQuest=false){
     if(S.away){uxMaybeEncounter();render();}
     return;
   }
-  if(v4HasActiveUndertaking()){lg('【派生依頼】受注中の依頼があるため自由遠征へ置換できません。');return;}
+  if(v4HasActiveUndertaking()){lg('【街道の追加依頼】受注中の依頼があるため自由遠征へ置換できません。');return;}
   if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
   uxOpenJourney('free');
   S.quest=null;S.away=true;S.phase='field';S.exploration=null;S.battle=false;
@@ -9116,7 +9116,7 @@ function uxFieldGather(){
     S.quest.uxGatherProgress=(S.quest.uxGatherProgress||0)+amount;
     if(S.quest.uxGatherProgress>=2){
       if(S.quest.derived){
-        if(!v4MarkDerivedProgress(S,'gather'))lg('【派生依頼】必要素材・地域・期限を確認してください。');
+        if(!v4MarkDerivedProgress(S,'gather'))lg('【街道の追加依頼】必要素材・地域・期限を確認してください。');
       }else S.quest.done=1;
       if(S.quest.done)lg('採取依頼の必要量を確保。戦闘なしで帰還・納品できます。');
     }
