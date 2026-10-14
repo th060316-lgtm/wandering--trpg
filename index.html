@@ -158,6 +158,23 @@ body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px)}
 .v5-episode-heading{font-size:14px;font-weight:650;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}
 .v5-episode p{font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0}
 .v5-episode-next{color:#dfc999}
+/* V6: offline scene art and a real 8 x 3 side-view battlefield. */
+.v6-scene{position:relative;overflow:hidden;border:1px solid #45544c;border-radius:12px;background:#101816;min-height:178px;margin:9px 0}
+.v6-scene svg{display:block;width:100%;height:178px}
+.v6-scene-caption{position:absolute;left:8px;right:8px;bottom:8px;padding:6px 8px;border-radius:7px;background:rgba(8,10,10,.82);font-size:12px}
+.v6-route-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:8px;margin-top:10px}
+.v6-route-actions button{white-space:normal;min-width:0}
+#board.v6-board{display:grid;grid-template-columns:repeat(8,minmax(62px,1fr));grid-template-rows:repeat(3,minmax(92px,auto));gap:4px;min-width:520px;overflow:visible}
+.v6-board-wrap{max-width:100%;overflow-x:auto;padding-bottom:5px}
+.v6-cell{position:relative;border:1px solid var(--border);border-radius:8px;padding:4px;min-width:0;background:#191b1e;text-align:left;color:var(--fg)}
+.v6-cell[data-zone="ally"]{background:#15231e}.v6-cell[data-zone="enemy"]{background:#281a1a}.v6-cell[data-zone="neutral"]{background:#201f1a}
+.v6-cell.v6-obstacle{background:repeating-linear-gradient(135deg,#24201a,#24201a 8px,#30291f 8px,#30291f 16px)}
+.v6-cell.v6-selected{outline:2px solid #d9c779;outline-offset:-2px}
+.v6-coord{font-size:9px;color:var(--subtle)}
+.v6-token{display:flex;align-items:center;gap:4px;margin-top:3px;padding:3px;border-radius:6px;font-size:10px;overflow:hidden}
+.v6-token.ally{background:#29463b}.v6-token.enemy{background:#553030}.v6-token svg{width:24px;height:24px;flex:0 0 24px}
+.v6-token b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){.v6-board-wrap{margin-left:-6px;margin-right:-6px}#board.v6-board{min-width:512px}.v6-scene svg{height:150px}.v6-scene{min-height:150px}}
 /* PERSONA_P0_20261012: context-aware views, event spotlight and departure notice */
 [hidden]{display:none!important}
 .ux-depart-alert{border:1px solid #88633b;background:#32261d;color:#f1d7a9;padding:11px;border-radius:9px;white-space:pre-wrap;line-height:1.65;margin:9px 0}
@@ -204,6 +221,20 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px + env(safe-area-inset-bottom,0px))}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* HQ progressive disclosure: do not remove old controls; keep only current decision visible. */
+.hq-fold-card{padding:6px 10px!important}
+.hq-fold-panel{width:100%;min-width:0}
+.hq-fold-panel>summary,.hq-secondary>summary,.hq-inline-more>summary{cursor:pointer;list-style-position:inside;color:#d5e5dc;font-weight:700;padding:12px 9px;min-height:44px;box-sizing:border-box;overflow-wrap:anywhere}
+.hq-fold-panel[open]>summary,.hq-secondary[open]>summary{border-bottom:1px solid var(--border);margin-bottom:10px}
+.hq-fold-panel>div,.hq-fold-panel>section{max-width:100%;min-width:0}
+.hq-secondary,.hq-inline-more{border:1px solid #39453f;border-radius:9px;background:#1a211f;margin:10px 0;padding:0 4px}
+.hq-inline-more #uxHubHint,.hq-inline-more #uxAdventureHint{padding:4px 9px 12px;margin:0}
+.hq-cost{padding:10px;border-radius:8px;background:#202d27;border:1px solid #47584d;font-size:12px;line-height:1.5}
+#v6AdventurePanel>h3{font-size:15px;margin:10px 0 5px}
+#uxBattleBoardCard{scroll-margin-top:90px}
+#battleCommandCard .battle-action-note{border-left:3px solid #a8caac;padding-left:10px;line-height:1.7}
+@media(max-width:480px){.hq-fold-panel>summary,.hq-secondary>summary{font-size:14px}}
 </style>
 </head>
 <body>
@@ -497,11 +528,11 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
 
   <div class="c" id="uxBattleBoardCard">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2>7区画戦場</h2>
-      <span class="s">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
+      <h2 id="battleBoardTitle">7区画戦場</h2>
+      <span class="s" id="battleBoardHelp">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
     </div>
-    <details id="uxBattleQuickGuide"><summary>初めての戦闘：7区画の見方（開く）</summary><p>左3区画＝味方側、中央＝接戦地帯、右3区画＝敵側。前衛が近づき、槍は中距離、弓は後方から攻撃します。武器の射程と敵の位置を確認しましょう。</p><p>戦闘開始時は「攻撃/接近の案をセットする」で候補を確認し、問題なければ「選択した行動で1ターン実行」。提案は安全を保証しません。撤退・交渉も状況次第で選べます。</p></details>
-    <div id="board" class="lanes"></div>
+    <details id="uxBattleQuickGuide"><summary>初めての戦闘：8列×3行の見方</summary><p>左3列＝味方、中央2列＝中立、右3列＝敵。味方の駒を選び、移動したい空きマスを押して移動指示を出します。縦方向も移動可能。射程は距離と障害物で判定されるため、攻撃不能なら位置を変えましょう。</p><p>戦闘開始時は「攻撃/接近の案をセットする」で候補を確認し、問題なければ「選択した行動で1ターン実行」。提案は安全を保証しません。撤退・交渉も状況次第で選べます。</p></details>
+    <div class="v6-board-wrap"><div id="board" class="lanes"></div></div>
   </div>
 
 
@@ -511,12 +542,13 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   </div>
   <section class="c" id="battleCommandCard" aria-label="戦闘中の味方行動コマンド" hidden>
     <h2>味方の行動選択 → 実行</h2>
-    <p class="s">注意：主人公が戦闘不能になると、通貨・素材・携行物資・パーティー携行武器をすべて失います。撤退も判断の一つです。</p>
-    <p class="battle-action-note">前回の指示は基本的に維持されます。状況に応じて標的や移動を変更できます。自律の仲間は自分で判断します。</p>
+    <p class="s">注意：主人公だけが戦闘不能でも、仲間が戦えるなら戦闘は続きます。仲間が勝てば代価付き救護。全員が戦闘不能になると敗北し、携行品を失います。危険なら撤退を選べます。</p>
+    <p class="battle-action-note">① 味方の駒・行動を選ぶ → ② 射程外や遮蔽物があるなら、空きマスを押して移動先を指定 → ③ 「1ターン実行」。自律の仲間は自分で動きます。</p>
     <div class="row"><button onclick="uxBattleSuggest()">攻撃/接近の案をセットする（実行は別）</button><button onclick="uxBattleReuse()">前のターンの指示を復元</button></div>
     <p class="ux-hint" id="uxBattleForecast">敵の射程や味方の位置を見て判断してください。</p>
     <div id="battlePartyHost"></div>
     <button type="button" class="primary" id="resolve" style="width:100%;margin-top:10px" onclick="resolveTurn()">選択した行動で1ターン実行</button>
+    <button type="button" id="v6RetreatButton" style="width:100%;margin-top:6px" hidden onclick="v6RetreatBattle()">戦場から撤退する（敗北とは別結果）</button>
     <button type="button" id="btnV4BattleNeg" style="width:100%;margin-top:6px" hidden onclick="v4OfferBattleNegotiation()">交渉を試みる（F04・費用とリスクあり）</button>
     <div id="v4BattleNegBox" hidden style="margin-top:8px"></div>
   </section>
@@ -604,7 +636,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   <details class="c" id="simPanel">
     <summary>世界の詳しい記録・追加操作</summary>
     <p class="s">旱魃 → 食料不足 → 価格・輸送需要 → 護衛受注 → 探索・戦闘 → 完遂帰還 → 物流回復。依頼達成回数に終了上限はなく継続プレイ可能。</p>
-    <div class="row"><button type="button" onclick="simDebugDrought()">GM旱魃を投入（制限あり）</button>
+    <div class="row"><!-- GM旱魃の手動投入は開発者コンソール専用。simDebugDrought()本体は保全する。 -->
     <button type="button" onclick="simExportSave()">Saveファイルを書出</button>
     <label class="s">Saveファイルを読込（V1.0対応）<input type="file" accept=".json,application/json" onchange="simImportSave(this)"></label></div>
     <pre id="simStatus" class="s" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
@@ -6906,7 +6938,7 @@ function migrateSave(input){
   if(heroIndex<0){heroIndex=0;next.party[0].hero=true;}
   if(heroIndex!==0){const [hero]=next.party.splice(heroIndex,1);next.party.unshift(hero);}
   next.party.forEach((u,i)=>{u.hero=i===0;});
-  if(next.party[0].hp<=0)next.party[0].hp=1;
+  if(next.party[0].hp<=0&&!(next.v6Battle&&next.v6Battle.active))next.party[0].hp=1;
   // v0.1 had a shared growth pool; retain its exact amount once on the hero.
   // Old skill levels remain in sk; upgraded atk/def are already in base, so do not double-add bonuses.
   if(oldVersion===1&&Number.isFinite(next.gp)){
@@ -7072,6 +7104,7 @@ function migrateSave(input){
   next.uxLastJourney=next.uxLastJourney&&typeof next.uxLastJourney==='object'?next.uxLastJourney:null;
   next.uxFieldTalkDay=num(next.uxFieldTalkDay,0,0);
   next.uxLifeEventsInterrupted=num(next.uxLifeEventsInterrupted,0,0,100000);
+  v6NormalizeSave(next);
   return next;
 }
 function saveCandidateList(){
@@ -7299,7 +7332,16 @@ function render(){
 
 
   const melee=meleeCells();
-  document.getElementById("board").innerHTML=LANES.map(lane=>{
+  const boardNode=document.getElementById("board");
+  const boardTitle=document.getElementById("battleBoardTitle"),boardHelp=document.getElementById("battleBoardHelp");
+  if(S.v6Battle){
+    boardNode.className="v6-board";
+    boardNode.innerHTML=v6BattleBoardHtml();
+    if(boardTitle)boardTitle.textContent="横視点 8列×3行戦場";
+    if(boardHelp)boardHelp.textContent="味方3列・中立2列・敵3列。セルを選び、移動・射程・占有を実座標で判定";
+  }else{
+  boardNode.className="lanes";
+  boardNode.innerHTML=LANES.map(lane=>{
     const here=[...S.party,...S.en].filter(u=>u.hp>0&&u.cell===lane.id);
     const isM=melee.includes(lane.id);
     const contact=here.some(a=>here.some(b=>inContact(a,b)));
@@ -7312,6 +7354,9 @@ function render(){
           +'<div class="s">'+u.hp+'/'+u.maxHp+' 射'+rangeOf(u)+' 速'+st.spd+'</div></div>';
       }).join("")+'</div>';
   }).join("");
+  if(boardTitle)boardTitle.textContent="7区画戦場";
+  if(boardHelp)boardHelp.textContent="標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示";
+  }
 
 
   const livingEn=living(S.en);
@@ -7346,7 +7391,7 @@ function render(){
       +'</div>'
       +(u.hero?'':'<select onchange="setMode('+i+',this.value)"><option value="自律"'+(u.mode==="自律"?' selected':'')+'>自律</option><option value="指示"'+(u.mode==="指示"?' selected':'')+'>指示</option></select>')
       +'</div><div class="hp ally"><i style="width:'+(100*u.hp/u.maxHp)+'%"></i></div>'
-      +'<div class="s">HP '+u.hp+'/'+u.maxHp+' Lv'+u.charLv+' 攻'+st.atk+' 防'+st.def+' 速'+st.spd+'</div>'
+      +'<div class="s">HP '+u.hp+'/'+u.maxHp+' Lv'+u.charLv+' 攻'+st.atk+' 防'+st.def+' 速'+st.spd+(S.v6Battle?' ／ 座標('+u.v6x+','+u.v6y+')・盤面の空きセルをタップで移動指定':'')+'</div>'
       +'<div class="row" style="margin-top:8px"><select '+(commanded&&S.battle?"":"disabled")+' onchange="setAct('+i+',this.value)">'
       +Object.keys(ACTIONS).map(k=>'<option value="'+k+'"'+(u.act===k?' selected':'')+'>'+ACTIONS[k]+'</option>').join("")
       +'</select>'+extra+'</div></div>';
@@ -7367,11 +7412,13 @@ function render(){
     battleCommands.hidden=true;
     partyBattleNote.hidden=true;
   }
+  const v6RetreatButton=document.getElementById('v6RetreatButton');
+  if(v6RetreatButton)v6RetreatButton.hidden=!(S.battle&&S.v6Battle);
 
   document.getElementById("enemies").innerHTML=S.en.length?S.en.map(e=>{
     const st=eff(e);
     return'<div class="u"><div class="row" style="justify-content:space-between"><b>'+v17EscapeHtml(e.name)+'</b><span class="s">'
-      +v17EscapeHtml(laneName(e.cell))+' / '+v17EscapeHtml(e.behavior)+' / 耐久'+e.weapon.durability+'</span></div><div class="hp enemy"><i style="width:'+(100*e.hp/e.maxHp)+'%"></i></div>'
+      +v17EscapeHtml(S.v6Battle?'座標 '+e.v6x+','+e.v6y:laneName(e.cell))+' / '+v17EscapeHtml(e.behavior)+' / 耐久'+e.weapon.durability+'</span></div><div class="hp enemy"><i style="width:'+(100*e.hp/e.maxHp)+'%"></i></div>'
       +'<div class="s">HP '+e.hp+'/'+e.maxHp+' 速'+st.spd+' 射程'+rangeOf(e)+'</div></div>';
   }).join(""):'<span class="muted">戦闘なし</span>';
 
@@ -7406,6 +7453,8 @@ function render(){
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
   try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();v5RenderLocalEpisode();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
+  try{if(window.__hqV6Initialized)v6RenderAdventure();}catch(e){console.warn('V6 adventure render',e);}
+  if(window.__hqV6Initialized){try{hqProgressiveRefresh();if(window.F1Shell)F1Shell.refreshHud();}catch(e){console.warn('HQ UX render',e);}}
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -7419,11 +7468,11 @@ function uxRenderFirstJourneyCoach(){
   const pulse=document.getElementById('uxWorldPulseLine');
   if(!step||!next||!btn||!pulse)return;
   let phase='1/4 依頼を選ぶ';
-  let detail='初めての旅なら調査・採取など戦闘を避けられる仕事がおすすめ。討伐は危険で、主人公が倒れると携行品を失う。敗北後も日雇い・採集で立て直せます。';
+  let detail='初めての旅なら調査・採取など戦闘を避けられる仕事がおすすめ。討伐は危険で、主人公だけが倒れても仲間が勝てば救護されます。全滅すると携行品を失います。敗北後も日雇い・採集で立て直せます。';
   let target='uxQuestCard';
   if(S.battle){
     phase='3/4 戦闘の判断';
-    detail='主人公が倒れると携行品を失います。敵の位置・射程・HPを確認し、危険なら撤退や交渉も検討。「攻撃/接近の案」を確認してから1ターン実行。';
+    detail='主人公だけが倒れても仲間は戦闘を続けられます。全滅時は携行品を失います。敵の位置・射程・HPを確認し、危険なら撤退や交渉も検討。「攻撃/接近の案」を確認してから1ターン実行。';
     target='battleCommandCard';
   } else if(S.v4Events?.active){
     phase='3/4 道中の出来事';
@@ -7447,7 +7496,7 @@ function uxRenderFirstJourneyCoach(){
     target='uxQuestCard';
   } else if(S.quest){
     phase='1/4 依頼と目的地を確認';
-    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼を確認し、旅の目的を「依頼」にして出発しましょう。討伐は主人公が倒れると携行品を失う危険があります。初心者は調査・採取や撤退も選べます。';
+    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼を確認し、旅の目的を「依頼」にして出発しましょう。討伐で全滅すると携行品を失います。主人公だけが倒れた場合は仲間が救える可能性があります。初心者は調査・採取や撤退も選べます。';
     target='uxQuestCard';
   }
   step.textContent=phase; next.textContent=detail;
@@ -7466,7 +7515,7 @@ function uxRenderFirstJourneyCoach(){
 function uxFirstJourneyGo(){
   if(typeof F1Shell!=='undefined'&&typeof F1Shell.showPane==='function')F1Shell.showPane('adv');
   const target=document.getElementById(uxFirstJourneyAnchor)||document.getElementById('uxQuestCard');
-  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+  if(target){const fold=target.querySelector(':scope > details.hq-fold-panel');if(fold)fold.open=true;target.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 
 function uxRenderGuide(){
@@ -7487,7 +7536,7 @@ function uxRenderGuide(){
   else if(S.away){title='到着地から何をする？';step='現地を起点に探索・採集・休息・人との会話・帰還を選べる。';}
   const story='現在地：'+here+' ／ 旅の'+(S.day||1)+'日目\n'+(S.away?'関わっている依頼：':'選んでいる依頼：')+currentQuest+'\n'+step;
   const heroHp=S.party?.[0]?.hp??'不明';
-  const dangerNote='\n主人公HP '+heroHp+'／'+(S.party?.[0]?.maxHp??'?')+'。戦闘不能になると所持金・素材・携行物資・武器を全ロスします。';
+  const dangerNote='\n主人公HP '+heroHp+'／'+(S.party?.[0]?.maxHp??'?')+'。主人公だけのKOでは戦闘継続可能。全滅による敗北時は携行品を失います。';
   const resetNote=(S.uxLossCount||0)>0?'\n復旧の選択肢：拠点で日雇い労働、または非戦闘採集依頼。':'';
   const hint='手持ち：食料 '+food+'、水 '+water+'、疲労 '+fatigue+'。\n'+rumor+dangerNote+resetNote;
   for(const prefix of ['uxHub','uxAdventure']){
@@ -9005,6 +9054,238 @@ function uxCheckDepartureBorder(){
   if(S.borderChoice==='pay'&&pre.tariff>0&&S.gold<pre.tariff){lg('関税が不足（'+pre.tariff+'通貨）。');return false;}
   return true;
 }
+/* ===== V6.0: connected regional routes ===== */
+const V6_REGION_STYLE={
+  '灰風平原':{sky:'#9aa58e',ground:'#5f6947',mark:'風車',accent:'#d7c77a'},'碧森辺境':{sky:'#60766b',ground:'#263f33',mark:'巨木',accent:'#8fc89d'},
+  '赤土丘陵':{sky:'#b08b72',ground:'#754634',mark:'砦',accent:'#e3aa72'},'セラ川下流湿地':{sky:'#6b8580',ground:'#354f48',mark:'渡し場',accent:'#9bd0cc'},
+  'ベルク北峠旧軍道':{sky:'#89939b',ground:'#4b5358',mark:'見張台',accent:'#c7d3db'},'東部採石路':{sky:'#a49883',ground:'#625847',mark:'石切場',accent:'#d0b98f'},
+  '風車牧野':{sky:'#8da8a0',ground:'#4e704b',mark:'風車',accent:'#d8df9a'},'南湖干潟':{sky:'#7899a2',ground:'#586b62',mark:'漁舟',accent:'#a9d9de'},
+  '街道宿場跡':{sky:'#8f8578',ground:'#51483e',mark:'宿場',accent:'#d2b685'}
+};
+const V6_PLACE_FALLBACK=['外れ道','古い橋','見晴らし丘','崩れた遺構'];
+function v6Esc(x){return v17EscapeHtml(String(x==null?'':x));}
+function v6Style(region){return V6_REGION_STYLE[region]||V6_REGION_STYLE['灰風平原'];}
+function v6Graph(region){
+  const p=(regionProfile(region).places||V6_PLACE_FALLBACK).slice();while(p.length<4)p.push(V6_PLACE_FALLBACK[p.length]);
+  return {
+    arrival:{title:region+'の入口',kind:'arrival',desc:'土地の匂いと人の流れを確かめる。ここから進路を選べる。',exits:['fork']},
+    fork:{title:p[0]+'の分かれ道',kind:'fork',desc:'安全な街道、険しい近道、情報を得られる高所へ道が分かれる。',exits:['safe','wild','lookout','arrival']},
+    safe:{title:p[1],kind:'bridge',desc:'遠回りだが足場はよい。商人の痕跡が残る。',exits:['spring','danger','fork']},
+    wild:{title:p[2],kind:'forest',desc:'距離は短いが獣道と伏兵の気配がある。',exits:['danger','spring','fork']},
+    lookout:{title:'見晴らしの'+p[0],kind:'tower',desc:'地域の道と危険を観察できる。依頼や再訪の判断材料になる。',exits:['finale','fork']},
+    spring:{title:'旅人の休み場',kind:'spring',desc:'補給の跡と土地の人の伝言がある。採取か聞き込みができる。',exits:['finale','safe','wild']},
+    danger:{title:p[3]+'の危険地帯',kind:'danger',desc:'敵集団が道を塞いでいる。戦闘・交渉・代価付き迂回を選ぶ。',exits:['finale','fork'],hazard:true},
+    finale:{title:region+'の奥地',kind:'finale',desc:'ここで得た結果は依頼、住人、地域状態、次の再訪へ残る。',exits:['arrival','fork'],hazard:true}
+  };
+}
+function v6DefaultAdventure(region){
+  return {version:1,active:true,region:region,at:'arrival',previous:null,path:['arrival'],visited:{arrival:1},resolved:{},outcomes:[],alert:0,selectedUnitId:null,ending:null,
+    contract:S.quest?{title:S.quest.title||questTitle(S.quest),type:S.quest.type,region:region,enemyGroup:S.quest.mon||null,place:S.quest.place||null}:null};
+}
+function v6NormalizeSave(state){
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,Math.floor(Number(n)||0)));
+  if(state.v6Adventure&&typeof state.v6Adventure==='object'&&REGION_PROFILE[state.v6Adventure.region]){
+    const a=state.v6Adventure,g=v6Graph(a.region);a.version=1;a.active=!!a.active;a.at=g[a.at]?a.at:'arrival';a.previous=g[a.previous]?a.previous:null;
+    a.path=Array.isArray(a.path)?a.path.filter(x=>g[x]).slice(-40):[a.at];a.visited=a.visited&&typeof a.visited==='object'?a.visited:{};
+    a.resolved=a.resolved&&typeof a.resolved==='object'?a.resolved:{};a.outcomes=Array.isArray(a.outcomes)?a.outcomes.slice(-30):[];a.alert=clamp(a.alert,0,100);
+  }else state.v6Adventure=null;
+  if(state.v6Battle&&state.v6Battle.active){
+    const b=state.v6Battle;b.version=1;b.active=true;b.turn=clamp(b.turn||1,1,9999);
+    b.obstacles=Array.isArray(b.obstacles)?b.obstacles.filter(c=>c&&Number.isInteger(c.x)&&c.x>=0&&c.x<8&&Number.isInteger(c.y)&&c.y>=0&&c.y<3).slice(0,5):[];
+    const used=new Set(),put=(u,i,side)=>{
+      let x=Number.isInteger(u.v6x)?clamp(u.v6x,0,7):(side==='ally'?Math.max(0,2-Math.floor(i/3)):Math.min(7,5+Math.floor(i/3))),y=Number.isInteger(u.v6y)?clamp(u.v6y,0,2):i%3;
+      const blocked=(xx,yy)=>b.obstacles.some(o=>o.x===xx&&o.y===yy);
+      if(used.has(x+','+y)||blocked(x,y)){const cells=[];for(let xx=side==='ally'?0:5;xx<=(side==='ally'?2:7);xx++)for(let yy=0;yy<3;yy++)cells.push({x:xx,y:yy});const free=cells.find(c=>!used.has(c.x+','+c.y)&&!blocked(c.x,c.y));if(free){x=free.x;y=free.y;}}
+      u.v6x=x;u.v6y=y;used.add(x+','+y);u.cell=side==='ally'?Math.min(2,x):Math.max(4,x-1);
+    };
+    (state.party||[]).forEach((u,i)=>put(u,i,'ally'));(state.en||[]).forEach((u,i)=>put(u,i,'enemy'));state.battle=true;state.away=true;state.phase='battle';
+  }else state.v6Battle=null;
+}
+function v6BeginRegion(region){
+  if(!REGION_PROFILE[region])region=S.world.region;if(!S.v6Adventure||!S.v6Adventure.active||S.v6Adventure.region!==region)S.v6Adventure=v6DefaultAdventure(region);
+  S.phase='field';S.exploration=null;lg('【V6遠征】'+region+'の地点網へ到着。方向、戻る、迂回、帰還を選べる。');
+}
+function v6CanPayMove(){const n=Math.max(1,living(S.party).length);return S.res.food>=n&&S.res.water>=n;}
+function v6PayMove(label){
+  const n=Math.max(1,living(S.party).length);if(!v6CanPayMove()){lg(label+'には一行'+n+'人分の食料と水が必要。安全な帰還を選べる。');return false;}
+  S.res.food-=n;S.res.water-=n;S.res.fatigue=cl(S.res.fatigue+5,0,100);S.day++;if(S.sim)simAdvance(S,S.day);nationTick(S,1);return true;
+}
+function v6MoveNode(to){
+  const a=S.v6Adventure;if(!a||S.battle)return;const g=v6Graph(a.region),node=g[a.at];
+  if(!node||!node.exits.includes(to)){lg('その方向へは進めない。');return;}if(node.hazard&&!a.resolved[a.at]){lg('危険を未解決のまま通過できない。戦闘・交渉・迂回を選んでください。');return;}
+  if(!v6PayMove(g[to].title+'への移動'))return;a.previous=a.at;a.at=to;a.path.push(to);a.visited[to]=(a.visited[to]||0)+1;if(g[to].hazard&&!a.resolved[to])a.alert=cl(a.alert+8,0,100);
+  lg(g[to].title+'へ進んだ。食料・水・時間・疲労を消費。');if(to==='lookout')v6ResolveObjective('survey');if(to==='spring')v6ResolveObjective('gather');render();
+}
+function v6Back(){const a=S.v6Adventure;if(!a||S.battle||!Array.isArray(a.path)||a.path.length<2)return;const back=a.path[a.path.length-2];if(!v6Graph(a.region)[back])return;if(!v6PayMove('引き返し'))return;a.path.pop();a.at=back;a.previous=a.path.length>1?a.path[a.path.length-2]:null;a.visited[back]=(a.visited[back]||0)+1;lg('来た道を引き返した。');render();}
+function v6EmergencyReturn(){
+  if(!S.v6Adventure||S.battle)return;const shortage=!v6CanPayMove();S.day++;S.res.fatigue=cl(S.res.fatigue+(shortage?14:7),0,100);
+  if(shortage){S.res.injury=cl(S.res.injury+2,0,100);living(S.party).forEach(u=>u.hp=Math.max(1,u.hp-2));lg('物資不足のため強行帰還。負傷とHP消耗を受けた。');}
+  else{const n=Math.max(1,living(S.party).length);S.res.food-=n;S.res.water-=n;lg('物資を使って街へ帰還する。');}S.v6Adventure.ending=S.v6Adventure.ending||'withdrawn';returnTown();
+}
+function v6ResolveObjective(kind){
+  const a=S.v6Adventure,q=S.quest;if(!a||!q||a.contract?.title!==(q.title||questTitle(q))||a.contract.region!==a.region)return false;
+  if(kind==='survey'&&q.type==='探索'&&!q.done){q.done=1;v6ApplyOutcome('surveyed');lg('依頼地点の経路調査を記録。現在の探索依頼だけが達成になった。');return true;}
+  if(kind==='gather'&&q.type==='採取'&&!q.done){q.v6Gather=(q.v6Gather||0)+1;if(q.v6Gather>=2){q.done=1;v6ApplyOutcome('gathered');lg('指定地域で必要な採取量を確保。現在の採取依頼だけが達成になった。');}else lg('指定素材を一部確保（1/2）。別の進路でもう一度採取が必要。');return true;}
+  return false;
+}
+function v6LocalAction(kind){
+  const a=S.v6Adventure;if(!a||S.battle)return;
+  if(kind==='talk'){if(!v6PayMove('聞き込み'))return;a.alert=cl(a.alert-4,0,100);a.outcomes.push({day:S.day,type:'talk',node:a.at});lg('土地の住人から危険と迂回路を聞いた。敵警戒が少し下がった。');}
+  else if(kind==='gather'){if(!v6PayMove('採取'))return;S.materials=S.materials||{};S.materials.herb=(S.materials.herb||0)+1;a.outcomes.push({day:S.day,type:'gather',node:a.at});v6ResolveObjective('gather');lg('薬草を1つ採取した。');}
+  else if(kind==='rest'){if(!v6CanPayMove()){lg('野営用の食料と水が足りない。強行帰還は可能。');return;}v6PayMove('野営');S.res.fatigue=cl(S.res.fatigue-18,0,100);living(S.party).forEach(u=>u.hp=Math.min(u.maxHp,u.hp+3));a.outcomes.push({day:S.day,type:'rest',node:a.at});lg('物資を消費して野営した。');}
+  render();
+}
+function v6ResolveHazard(method){
+  const a=S.v6Adventure;if(!a||S.battle)return;const node=v6Graph(a.region)[a.at];if(!node?.hazard||a.resolved[a.at])return;
+  if(method==='fight'){v6StartBattle();return;}if(method==='negotiate'){const cost=6+Math.floor(a.alert/20);if(S.gold<cost){lg('交渉材料が足りない（必要'+cost+'通貨）。');return;}S.gold-=cost;S.day++;a.resolved[a.at]='negotiated';a.alert=cl(a.alert-8,0,100);v6ApplyOutcome('negotiated');lg('敵対集団と交渉し通行を確保。通貨-'+cost+'、戦利品なし。');render();return;}
+  const n=Math.max(1,living(S.party).length),need=n*2;if(S.res.food<need||S.res.water<n){lg('迂回には食料'+need+'・水'+n+'が必要。不足時は交渉、戦闘、強行帰還を選べる。');return;}
+  S.res.food-=need;S.res.water-=n;S.day+=2;S.res.fatigue=cl(S.res.fatigue+12,0,100);a.resolved[a.at]='avoided';a.alert=cl(a.alert+5,0,100);v6ApplyOutcome('avoided');lg('危険地帯を大きく迂回。2日と物資を失い、敵警戒が残った。報酬・討伐達成なし。');render();
+}
+function v6ApplyOutcome(type){
+  const a=S.v6Adventure;if(!a)return;const rec={day:S.day,type:type,node:a.at,region:a.region};a.outcomes.push(rec);a.outcomes=a.outcomes.slice(-30);S.v6World=S.v6World&&typeof S.v6World==='object'?S.v6World:{};
+  const w=S.v6World[a.region]||(S.v6World[a.region]={security:0,access:0,trade:0,lastOutcome:null,revisits:0});
+  if(type==='cleared'){w.security=cl(w.security+6,-100,100);w.access=cl(w.access+4,-100,100);w.trade=cl(w.trade+2,-100,100);}if(type==='negotiated'){w.access=cl(w.access+3,-100,100);w.trade=cl(w.trade+2,-100,100);}
+  if(type==='avoided'){w.security=cl(w.security-2,-100,100);w.access=cl(w.access-1,-100,100);}if(type==='surveyed')w.access=cl(w.access+3,-100,100);if(type==='gathered')w.trade=cl(w.trade+2,-100,100);w.lastOutcome=rec;
+  try{const ri=ensureRegionIntel(S,a.region);ri.knowledge=cl((ri.knowledge||0)+2,0,100);ri.discoveryLevel=cl((ri.discoveryLevel||0)+3,0,100);}catch(e){}
+}
+function v6SceneSvg(kind,region){
+  const s=v6Style(region),sun=kind==='danger'?'#d47b65':s.accent;
+  const feature=kind==='town'||kind==='arrival'?'<path d="M55 125V68h48v57M62 68l17-28 17 28M118 125V78h62v47M126 78l23-23 23 23" fill="#2d3332" stroke="'+s.accent+'" stroke-width="3"/><circle cx="79" cy="94" r="7" fill="'+s.accent+'"/>'
+    :kind==='forest'?'<path d="M55 130L78 38l23 92M95 130l30-108 31 108M145 130l25-76 26 76" fill="#203b2e" stroke="'+s.accent+'" stroke-width="3"/>'
+    :kind==='bridge'?'<path d="M25 118Q110 54 210 118M25 118h185" fill="none" stroke="'+s.accent+'" stroke-width="8"/><path d="M0 138q35-18 70 0t70 0t70 0t70 0" fill="none" stroke="#5e8794" stroke-width="10"/>'
+    :kind==='tower'||kind==='lookout'?'<path d="M105 130V43h48v87M96 43h66l-10-18h-46z" fill="#3d4142" stroke="'+s.accent+'" stroke-width="3"/><path d="M0 130L70 80l52 50 55-64 63 64" fill="'+s.ground+'"/>'
+    :kind==='spring'?'<ellipse cx="125" cy="120" rx="72" ry="25" fill="#527f88"/><path d="M65 120q60-60 120 0" fill="none" stroke="'+s.accent+'" stroke-width="3"/>'
+    :'<path d="M20 130L70 65l35 50 38-82 77 97" fill="#3c3b38" stroke="'+s.accent+'" stroke-width="3"/><path d="M90 130l20-35 18 35" fill="#17191a"/>';
+  return '<svg viewBox="0 0 250 160" role="img" aria-label="'+v6Esc(region+' '+kind)+'"><rect width="250" height="160" fill="'+s.sky+'"/><circle cx="205" cy="35" r="18" fill="'+sun+'"/><rect y="125" width="250" height="35" fill="'+s.ground+'"/>'+feature+'</svg>';
+}
+function v6RenderAdventure(){
+  if(!S)return;const host=document.getElementById('uxAdventureGuide')||document.querySelector('#f1Pane_adv .ux-lead')||document.getElementById('f1Pane_adv');let panel=document.getElementById('v6AdventurePanel');
+  if(!S.away||!S.v6Adventure||!S.v6Adventure.active){const region=S.world?.region||'灰風平原',town=S.world?.town||'拠点',style=v6Style(region);
+    const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">V6 街と旅の入口</div><h2>'+v6Esc(town+' — '+region)+'</h2><div class="v6-scene">'+v6SceneSvg('town',region)+'<div class="v6-scene-caption">'+v6Esc(style.mark+'の見える街。施設・住人・依頼・世界状態は既存機能へ接続。')+'</div></div><details class="hq-secondary"><summary>町の施設・追加操作</summary><div class="v6-route-actions"><button onclick="openShop()">市場</button><button onclick="openSmith()">鍛冶場</button><button onclick="townRest()">宿と救護</button><button onclick="genQuest()">依頼掲示</button><button onclick="F1Shell.showPane(\'world\')">世界を観察</button></div></details></section>';
+    if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=!S.away||S.battle||S.phase!=='exploration';return;
+  }
+  const a=S.v6Adventure,g=v6Graph(a.region),n=g[a.at],w=S.v6World?.[a.region];let actions=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
+  if(Array.isArray(a.path)&&a.path.length>1)actions+='<button onclick="v6Back()">← 一つ前の地点へ戻る</button>';actions+='<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（物資不足・負傷覚悟）')+'</button>';
+  let hazard='';if(n.hazard&&!a.resolved[a.at])hazard='<div class="v6-route-actions"><button class="primary" onclick="v6ResolveHazard(\'fight\')">戦闘で道を開く</button><button onclick="v6ResolveHazard(\'negotiate\')">交渉する</button><button onclick="v6ResolveHazard(\'avoid\')">大きく迂回する</button></div>';
+  const local=(a.at==='spring'||a.at==='arrival')?'<div class="v6-route-actions"><button onclick="v6LocalAction(\'talk\')">土地の人に聞く</button><button onclick="v6LocalAction(\'gather\')">採取する</button><button onclick="v6LocalAction(\'rest\')">野営する</button></div>':'';
+  const status='食料 '+S.res.food+'／水 '+S.res.water+'／疲労 '+S.res.fatigue+'/100／敵警戒 '+a.alert+(w?'｜地域変化 治安'+w.security+' 通行'+w.access+' 交易'+w.trade:'');
+  const unitCost=Math.max(1,living(S.party).length);const moveTip='1地点移動：食料'+unitCost+'・水'+unitCost+'・1日・疲労+5。街へ帰る場合は帰還費用と未達成依頼に注意。';
+  const optionalActions=(Array.isArray(a.path)&&a.path.length>1?'<button onclick="v6Back()">← 来た道を引き返す</button>':'')+'<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（強行・負傷あり）')+'</button>';
+  const forward=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
+  const needsDecision=n.hazard&&!a.resolved[a.at];
+  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
+  if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=true;
+}
+
+/* V6 true 8 x 3 tactical layer. Coordinates are authoritative during V6 battles. */
+function v6UnitSvg(u){
+  const c=u.side==='ally'?'#9ad0b5':'#df8d83',flip=u.side==='ally'?'':' transform="translate(24 0) scale(-1 1)"';
+  const weapon=u.weapon?.category==='弓'?'<path d="M18 8q7 6 0 13M18 8l0 13" fill="none" stroke="#e4d6b0" stroke-width="1.5"/>':'<path d="M16 7l7 12M20 5l3 3" stroke="#e4d6b0" stroke-width="2"/>';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><g'+flip+'><circle cx="10" cy="6" r="4" fill="'+c+'"/><path d="M6 22l2-8-2-5h8l-2 5 2 8M8 14l-5 5M12 14l5 5" fill="none" stroke="'+c+'" stroke-width="2"/>'+weapon+'</g></svg>';
+}
+function v6BattleUnits(){return [...S.party,...S.en].filter(u=>u.hp>0);}
+function v6Occupied(x,y,ignoreId){return v6BattleUnits().some(u=>u.id!==ignoreId&&u.v6x===x&&u.v6y===y)||S.v6Battle.obstacles.some(o=>o.x===x&&o.y===y);}
+function v6Distance(a,b){return Math.abs(a.v6x-b.v6x)+Math.abs(a.v6y-b.v6y);}
+function v6LineBlocked(a,b){if(a.v6y!==b.v6y)return false;const lo=Math.min(a.v6x,b.v6x),hi=Math.max(a.v6x,b.v6x);return S.v6Battle.obstacles.some(o=>o.y===a.v6y&&o.x>lo&&o.x<hi);}
+function v6CanHit(a,b){return a.hp>0&&b.hp>0&&a.side!==b.side&&v6Distance(a,b)<=rangeOf(a)&&!v6LineBlocked(a,b);}
+function v6PlaceUnits(){
+  const used=new Set(),place=(u,x,y)=>{let guard=0;while(used.has(x+','+y)&&guard++<9){y=(y+1)%3;if(y===0)x+=u.side==='ally'?-1:1;}u.v6x=cl(x,0,7);u.v6y=y;used.add(u.v6x+','+u.v6y);};
+  living(S.party).forEach((u,i)=>place(u,2-Math.floor(i/3),i%3));living(S.en).forEach((u,i)=>place(u,5+Math.floor(i/3),i%3));
+}
+function v6MakeEnemy(mon,i){
+  const m=MON[mon]||MON.ゴブリン;
+  return makeUnit({id:'v6e_'+S.day+'_'+i,name:mon+(i+1),side:'enemy',cell:Math.min(6,4+i),stats:{hp:m.hp,atk:m.atk,def:m.def,spd:m.spd},category:m.category,weaponName:m.weapon,range:m.range,behavior:m.behavior});
+}
+function v6StartBattle(){
+  const a=S.v6Adventure,node=v6Graph(a.region)[a.at],q=S.quest;
+  const questMatch=!!(q&&a.contract&&a.contract.title===(q.title||questTitle(q))&&a.contract.region===a.region&&['討伐','護衛'].includes(q.type));
+  const enemies=regionProfile(a.region).enemies,primary=questMatch?(q.mon||enemies[0]):(a.at==='danger'?'オオカミ':enemies[1]||'ゴブリン');
+  const count=Math.max(2,Math.min(5,questMatch?(q.n||3):2+(a.alert>=15?1:0)));
+  S.en=Array.from({length:count},(_,i)=>v6MakeEnemy(i?enemies[i%enemies.length]:primary,i));
+  S.v6Battle={version:1,active:true,turn:1,region:a.region,nodeId:a.at,enemyGroup:primary,objectiveId:questMatch?(a.contract.title+'|'+a.region+'|'+(q.place||'')):null,questMatch:questMatch,rewarded:false,
+    obstacles:a.at==='danger'?[{x:3,y:0,type:'rock'},{x:4,y:2,type:'brush'}]:[{x:3,y:1,type:'ruin'}]};
+  v6PlaceUnits();S.battle=true;S.phase='battle';S.away=true;S.heroRescuePending=false;a.resolved[a.at]='engaged';
+  lg('【V6戦闘】'+node.title+'で'+primary+'の集団と接敵。8列×3行の実座標戦闘を開始。');render();
+}
+function v6SelectUnit(id){if(!S.v6Battle)return;const u=S.party.find(x=>x.id===id&&x.hp>0&&(x.hero||x.mode==='指示'));if(!u)return;S.v6Adventure.selectedUnitId=id;render();}
+function v6SelectCell(x,y){
+  if(!S.v6Battle||v6Occupied(x,y))return;const id=S.v6Adventure?.selectedUnitId,u=S.party.find(v=>v.id===id&&v.hp>0&&(v.hero||v.mode==='指示'));
+  if(!u){lg('先に移動させる味方駒を選んでください。');return;}const d=Math.abs(u.v6x-x)+Math.abs(u.v6y-y),limit=canMoveTwo(u)?2:1;
+  if(d<1||d>limit){lg(u.name+'はこのターン'+limit+'マスまで移動できる。');return;}u.act='move';u.v6MoveTarget={x:x,y:y};lg(u.name+'の移動先を('+x+','+y+')に指定。');render();
+}
+function v6BattleBoardHtml(){
+  const selected=S.v6Adventure?.selectedUnitId;let out='';
+  for(let y=0;y<3;y++)for(let x=0;x<8;x++){
+    const zone=x<=2?'ally':x>=5?'enemy':'neutral',obs=S.v6Battle.obstacles.find(o=>o.x===x&&o.y===y),units=v6BattleUnits().filter(u=>u.v6x===x&&u.v6y===y);
+    const ally=units.find(u=>u.side==='ally'),sel=units.some(u=>u.id===selected),click=ally?'v6SelectUnit(\''+v6Esc(ally.id)+'\')':'v6SelectCell('+x+','+y+')';
+    out+='<button type="button" class="v6-cell'+(obs?' v6-obstacle':'')+(sel?' v6-selected':'')+'" data-x="'+x+'" data-y="'+y+'" data-zone="'+zone+'" onclick="'+click+'" aria-label="座標 '+x+','+y+'"><span class="v6-coord">x'+x+' y'+y+(obs?' 障害物':'')+'</span>';
+    units.forEach(u=>{out+='<span class="v6-token '+u.side+'">'+v6UnitSvg(u)+'<span><b>'+v6Esc(u.name)+'</b><br>HP '+u.hp+'/'+u.maxHp+'</span></span>';});out+='</button>';
+  }
+  return out;
+}
+function v6StepToward(u,target){
+  const dx=target.v6x>u.v6x?1:target.v6x<u.v6x?-1:0,dy=target.v6y>u.v6y?1:target.v6y<u.v6y?-1:0;
+  return [[u.v6x+dx,u.v6y],[u.v6x,u.v6y+dy],[u.v6x,u.v6y-1],[u.v6x,u.v6y+1],[u.v6x+(u.side==='ally'?1:-1),u.v6y]]
+    .filter(c=>c[0]>=0&&c[0]<8&&c[1]>=0&&c[1]<3&&!v6Occupied(c[0],c[1],u.id))
+    .sort((a,b)=>(Math.abs(a[0]-target.v6x)+Math.abs(a[1]-target.v6y))-(Math.abs(b[0]-target.v6x)+Math.abs(b[1]-target.v6y)))[0]||null;
+}
+function v6MoveUnit(u,target,steps){
+  const start={x:u.v6x,y:u.v6y};
+  for(let i=0;i<steps;i++){
+    let cell=null;if(i===0&&target&&Number.isInteger(target.x)&&Math.abs(u.v6x-target.x)+Math.abs(u.v6y-target.y)===1&&!v6Occupied(target.x,target.y,u.id))cell=[target.x,target.y];
+    if(!cell)cell=v6StepToward(u,target.v6x==null?{v6x:target.x,v6y:target.y}:target);if(!cell)break;
+    const enemy=(u.side==='ally'?S.en:S.party).find(e=>e.hp>0&&Math.abs(e.v6x-cell[0])+Math.abs(e.v6y-cell[1])===1&&isMeleeW(e.weapon.category));
+    u.v6x=cell[0];u.v6y=cell[1];if(enemy){lg(enemy.name+'が移動中の'+u.name+'を牽制。');break;}
+  }
+  u.cell=u.side==='ally'?Math.min(2,u.v6x):Math.max(4,u.v6x-1);if(start.x!==u.v6x||start.y!==u.v6y)lg(u.name+'が('+start.x+','+start.y+')→('+u.v6x+','+u.v6y+')へ移動。');
+}
+function v6Attack(atk,target,defending,protectors){
+  if(!v6CanHit(atk,target)){lg(atk.name+' → '+target.name+' 距離または障害物で攻撃不能');return;}
+  const cover=protectors.get(target.id);if(cover&&cover.hp>0&&v6Distance(cover,target)<=1&&v6CanHit(atk,cover)){lg(cover.name+'が'+target.name+'をかばう。');target=cover;}
+  let hit=cl(72+(eff(atk).spd-eff(target).spd)*2+hitBonus(atk)-(atk.side==='ally'?Math.floor(S.res.fatigue/25)*4:0),35,95);
+  if(1+R(100)>hit){lg(atk.name+' → '+target.name+' ミス');return;}let dmg=Math.max(1,eff(atk).atk+dmgBonus(atk,false)+R(4)-eff(target).def);
+  if(defending.has(target.id))dmg=Math.max(1,Math.ceil(dmg/2)-1);target.hp=Math.max(0,target.hp-dmg);atk.weapon.durability=Math.max(0,atk.weapon.durability-durCost(atk));
+  if(atk.side==='ally')S.res.fatigue=cl(S.res.fatigue+fatigueCost(atk),0,100);lg(atk.name+' → '+target.name+' '+dmg+'点');
+}
+function v6Plan(u){
+  if(u.side==='ally'&&(u.hero||u.mode==='指示'))return {act:u.act,target:findU(u.targetId),move:u.v6MoveTarget||null};
+  const foes=living(u.side==='ally'?S.en:S.party).sort((a,b)=>v6Distance(u,a)-v6Distance(u,b)),t=foes[0];if(!t)return {act:'defend'};
+  if(u.hp<=Math.ceil(u.maxHp*.25))return {act:'defend',target:t};if(v6CanHit(u,t))return {act:'attack',target:t};return {act:'move',target:t};
+}
+function v6ResolveTurn2D(){
+  if(!S.battle||!S.v6Battle)return;const defending=new Set(),protectors=new Map(),plans=v6BattleUnits().map(u=>({u,p:v6Plan(u)})).sort((a,b)=>eff(b.u).spd-eff(a.u).spd);
+  plans.forEach(({u,p})=>{if(u.hp<=0)return;if(p.act==='defend'||p.act==='intercept')defending.add(u.id);if(p.act==='protect'&&p.target&&p.target.hp>0&&v6Distance(u,p.target)<=1)protectors.set(p.target.id,u);});
+  for(const {u,p} of plans){
+    if(u.hp<=0||!S.battle)continue;
+    if(p.act==='move'){const dest=p.move&&Number.isInteger(p.move.x)&&Number.isInteger(p.move.y)?p.move:null,target=dest?{x:dest.x,y:dest.y}:p.target;if(target)v6MoveUnit(u,target,canMoveTwo(u)?2:1);delete u.v6MoveTarget;}
+    else if(p.act==='attack'){let t=p.target&&p.target.hp>0?p.target:(u.side==='ally'?living(S.en)[0]:living(S.party)[0]);if(t)v6Attack(u,t,defending,protectors);}
+    if(S.en.length&&S.en.every(e=>e.hp<=0)){v6BattleVictory();break;}if(S.party.every(e=>e.hp<=0)){v6BattleDefeat();break;}
+  }
+  if(S.v6Battle)S.v6Battle.turn++;syncTargets();render();
+}
+function v6BattleVictory(){
+  const b=S.v6Battle,a=S.v6Adventure;if(!b||b.rewarded)return;b.rewarded=true;S.battle=false;a.resolved[b.nodeId]='cleared';v6ApplyOutcome('cleared');
+  const hero=S.party.find(u=>u.hero);if(hero&&hero.hp<=0&&S.party.some(u=>!u.hero&&u.hp>0)){const gold=Math.min(5,S.gold||0),food=Math.min(1,S.res.food||0);S.gold-=gold;S.res.food-=food;S.res.injury=cl(S.res.injury+6,0,100);hero.hp=1;S.heroRescuePending=false;lg('仲間だけで勝利。戦後救護で主人公HP1、通貨-'+gold+'、食料-'+food+'、負傷+6。');}
+  if(b.questMatch&&S.quest&&a.contract?.title===(S.quest.title||questTitle(S.quest))&&a.contract.region===b.region&&!S.quest.done){S.quest.done=1;lg('場所・敵集団・依頼IDが一致したため、この依頼だけ達成。');}
+  else lg('戦闘勝利。ただし現在の依頼条件と一致しないため依頼は進まない。');
+  a.ending=b.questMatch?'contract_cleared':'local_threat_cleared';S.en=[];S.v6Battle=null;S.phase='field';render();
+}
+function v6BattleDefeat(){
+  if(!S.v6Battle||S.v6Battle.defeatApplied)return;S.v6Battle.defeatApplied=true;uxApplyTotalLoss();S.res.injury=cl(S.res.injury+12,0,100);S.party.forEach(u=>{u.hp=u.hero?1:0;});if(S.quest)S.quest.done=0;
+  S.v6Adventure.ending='defeat';S.v6Adventure.outcomes.push({day:S.day,type:'defeat',node:S.v6Adventure.at});S.battle=false;S.en=[];S.v6Battle=null;S.phase='field';lg('全員戦闘不能。正式敗北として携行資産を失った。主人公だけのKOとは区別される。');render();
+}
+function v6RetreatBattle(){
+  if(!S.v6Battle)return;const a=S.v6Adventure;a.resolved[a.at]='retreated';a.ending='retreat';a.alert=cl(a.alert+10,0,100);S.day++;S.res.fatigue=cl(S.res.fatigue+12,0,100);if(S.res.food>0)S.res.food--;if(S.quest)S.quest.done=0;
+  S.battle=false;S.en=[];S.v6Battle=null;S.phase='field';lg('戦場から撤退。敗北全ロスはないが、時間・食料・疲労・敵警戒を負担。依頼未達成。');render();
+}
+const v6LegacyResolveTurn=resolveTurn;
+resolveTurn=function(){return S&&S.v6Battle?v6ResolveTurn2D():v6LegacyResolveTurn();};
+const v6LegacyReturnTown=returnTown;
+returnTown=function(){
+  if(S&&S.v6Battle)return v6RetreatBattle();if(S&&S.v6Adventure&&S.v6Adventure.active){const a=S.v6Adventure,w=S.v6World?.[a.region];if(w)w.revisits=(w.revisits||0)+1;a.active=false;}
+  const result=v6LegacyReturnTown();if(S){S.v6Battle=null;if(S.v6Adventure)S.v6Adventure.active=false;}return result;
+};
+
 function uxStartJourney(forceQuest=false){
   if(!S||S.away||S.battle)return lg('出発操作は拠点でのみ可能です。');
   const mode=forceQuest?'quest':(document.getElementById('uxJourneyMode')?.value||S.uxJourneyMode||'free');
@@ -9012,7 +9293,7 @@ function uxStartJourney(forceQuest=false){
     if(!S.quest){uxRenderJourney();return lg('先に依頼を選んでください。');}
     if(!uxCheckDepartureBorder()){uxRenderJourney();return;}
     startQuest();
-    if(S.away){uxMaybeEncounter();render();}
+    if(S.away){v6BeginRegion(S.travelDest||S.world.region);render();}
     return;
   }
   if(v4HasActiveUndertaking()){lg('【街道の追加依頼】受注中の依頼があるため自由遠征へ置換できません。');return;}
@@ -9025,7 +9306,7 @@ function uxStartJourney(forceQuest=false){
   maybeGenerateRumors(S,'depart');
   S.uxJourney.arrivedDay=S.day;
   lg('【自由遠征】'+activeRegion(S)+'へ'+days+'日かけて到着。ここを起点に何度でも探索・採集・野営・人との交流ができます。');
-  uxMaybeEncounter();render();
+  v6BeginRegion(activeRegion(S));render();
 }
 function uxFieldEligible(){
   if(!S||!S.away||S.battle)return false;
@@ -9499,9 +9780,9 @@ function uxBattleSuggest(){
   if(!S?.battle)return;
   for(const u of S.party||[]){
     if(u.hp<=0||!(u.hero||u.mode==='指示'))continue;
-    const enemies=living(S.en).sort((a,b)=>dist(u,a)-dist(u,b));
+    const enemies=living(S.en).sort((a,b)=>S.v6Battle?v6Distance(u,a)-v6Distance(u,b):dist(u,a)-dist(u,b));
     const t=enemies[0];if(!t)continue;
-    if(canHit(u,t)){u.act='attack';u.targetId=t.id;}
+    if((S.v6Battle?v6CanHit(u,t):canHit(u,t))){u.act='attack';u.targetId=t.id;}
     else {u.act='move';u.targetId=t.id;u.moveDir=u.cell<t.cell?1:-1;u.moveSteps=canMoveTwo(u)?2:1;}
   }
   lg('攻撃・接近の候補をセットした。敵の反撃や危険は保証されません。確認してからターンを実行してください。');render();
@@ -10238,6 +10519,70 @@ function uxRenderTodaySituation(){
 
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
 
+
+/* HQ V6 UX simplification / player-facing presentation only. No game state or Save schema changes. */
+function hqFoldCard(id,label){
+  const host=document.getElementById(id);if(!host||host.querySelector(':scope > details.hq-fold-panel'))return;
+  const inner=document.createElement('details');inner.className='hq-fold-panel';
+  const summary=document.createElement('summary');summary.textContent=label;inner.appendChild(summary);
+  while(host.firstChild)inner.appendChild(host.firstChild);
+  host.appendChild(inner);host.classList.add('hq-fold-card');
+}
+function hqFriendlyWorldIds(){
+  const re=/ag_([^\s、。,:;「」『』()（）\[\]<>]+?)_(raider|merchant|guard)_(\d+)/g;
+  const label={raider:'襲撃者',merchant:'商隊',guard:'警備隊'};
+  for(const rootId of ['f1Pane_hub','f1Pane_adv','f1Pane_world','f1Pane_log']){
+    const root=document.getElementById(rootId);if(!root)continue;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    let node,count=0;while((node=walker.nextNode())&&count++<2500){
+      if(!node.nodeValue.includes('ag_'))continue;
+      node.nodeValue=node.nodeValue.replace(re,(_,region,role)=>region+'の'+label[role]);
+    }
+  }
+}
+function hqProgressiveRefresh(){
+  if(!document.getElementById('hqUXReady'))return;
+  // Keep essential route and battle actions visible. Only secondary tools fold.
+  const hadV6=!!(S&&S.v6Adventure&&S.v6Adventure.active);
+  const field=document.querySelector('#uxFieldCard > details.hq-fold-panel');
+  if(field){const mode=hadV6?'extra':'primary';if(field.dataset.mode!==mode){field.open=mode==='primary';field.dataset.mode=mode;}}
+  const guide=document.getElementById('uxFirstJourneyNext');
+  if(guide&&S&&S.v6Adventure?.active&&!S.battle){
+    guide.textContent='地点の絵の下から次の進路を選ぼう。1地点進むごとに食料・水・日数が必要。ほかの生活・調査操作は「現地生活の詳しい操作」を開けます。';
+    const next=document.getElementById('uxFirstJourneyGo');if(next)next.textContent='探索の進路へ';
+    uxFirstJourneyAnchor='v6AdventurePanel';
+  }
+  hqFriendlyWorldIds();
+}
+function hqProgressiveInit(){
+  const folded=[
+    ['surv',''], // status content only, not a card: handled separately below
+    ['uxCommodityCard','道具・素材の売買と倉庫（追加操作）'],
+    ['f2LifeCard','休養・装備・長期生活を設定'],
+    ['uxQuestCard','依頼を探す・受ける（掲示板を開く）'],
+    ['uxFieldCard','現地生活の詳しい操作（調査・採集・小仕事）'],
+    ['uxCampCard','野営の詳しい行動'],
+    ['uxBattleEnemiesCard','敵の能力・状態を詳しく見る'],
+    ['battleLogCard','戦闘ログの全文を確認']
+  ];
+  folded.slice(1).forEach(([id,label])=>hqFoldCard(id,label));
+  const survival=document.getElementById('surv');if(survival&&survival.parentElement){
+    const wrapper=survival.parentElement;const heading=wrapper.querySelector('h2');if(heading){
+      const d=document.createElement('details');d.className='hq-fold-panel';const summary=document.createElement('summary');summary.textContent='所持品・体調を詳しく確認';d.appendChild(summary);d.appendChild(survival);heading.replaceWith(d);wrapper.classList.add('hq-fold-card');
+    }
+  }
+  for(const id of ['uxHubHint','uxAdventureHint']){
+    const content=document.getElementById(id);if(!content||!content.parentElement)continue;
+    const d=document.createElement('details');d.className='hq-inline-more';
+    const summary=document.createElement('summary');summary.textContent='物資・危険の詳しい説明';
+    content.parentElement.insertBefore(d,content);d.appendChild(summary);d.appendChild(content);
+  }
+  // Leave primary battle command and actionable event cards open.
+  const marker=document.createElement('span');marker.id='hqUXReady';marker.hidden=true;document.body.appendChild(marker);
+}
+window.__hqV6Initialized=true;
+hqProgressiveInit();
+try{v6RenderAdventure();hqProgressiveRefresh();if(window.F1Shell)F1Shell.refreshHud();}catch(e){console.warn('HQ initial display',e);}
 </script>
 </body>
 </html>
