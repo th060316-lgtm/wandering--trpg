@@ -9199,7 +9199,7 @@ function v6BattleBoardHtml(){
   for(let y=0;y<3;y++)for(let x=0;x<8;x++){
     const zone=x<=2?'ally':x>=5?'enemy':'neutral',obs=S.v6Battle.obstacles.find(o=>o.x===x&&o.y===y),units=v6BattleUnits().filter(u=>u.v6x===x&&u.v6y===y);
     const ally=units.find(u=>u.side==='ally'),sel=units.some(u=>u.id===selected),click=ally?'v6SelectUnit(\''+v6Esc(ally.id)+'\')':'v6SelectCell('+x+','+y+')';
-    out+='<button type="button" class="v6-cell'+(obs?' v6-obstacle':'')+(sel?' v6-selected':'')+'" data-zone="'+zone+'" onclick="'+click+'" aria-label="座標 '+x+','+y+'"><span class="v6-coord">x'+x+' y'+y+(obs?' 障害物':'')+'</span>';
+    out+='<button type="button" class="v6-cell'+(obs?' v6-obstacle':'')+(sel?' v6-selected':'')+'" data-x="'+x+'" data-y="'+y+'" data-zone="'+zone+'" onclick="'+click+'" aria-label="座標 '+x+','+y+'"><span class="v6-coord">x'+x+' y'+y+(obs?' 障害物':'')+'</span>';
     units.forEach(u=>{out+='<span class="v6-token '+u.side+'">'+v6UnitSvg(u)+'<span><b>'+v6Esc(u.name)+'</b><br>HP '+u.hp+'/'+u.maxHp+'</span></span>';});out+='</button>';
   }
   return out;
