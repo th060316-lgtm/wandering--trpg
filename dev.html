@@ -9101,7 +9101,7 @@ function v6MoveNode(to){
   if(!v6PayMove(g[to].title+'への移動'))return;a.previous=a.at;a.at=to;a.path.push(to);a.visited[to]=(a.visited[to]||0)+1;if(g[to].hazard&&!a.resolved[to])a.alert=cl(a.alert+8,0,100);
   lg(g[to].title+'へ進んだ。食料・水・時間・疲労を消費。');if(to==='lookout')v6ResolveObjective('survey');if(to==='spring')v6ResolveObjective('gather');render();
 }
-function v6Back(){const a=S.v6Adventure;if(!a||!a.previous||S.battle)return;const back=a.previous;if(!v6PayMove('引き返し'))return;a.previous=a.at;a.at=back;a.path.push(back);a.visited[back]=(a.visited[back]||0)+1;lg('来た道を引き返した。');render();}
+function v6Back(){const a=S.v6Adventure;if(!a||S.battle||!Array.isArray(a.path)||a.path.length<2)return;const back=a.path[a.path.length-2];if(!v6Graph(a.region)[back])return;if(!v6PayMove('引き返し'))return;a.path.pop();a.at=back;a.previous=a.path.length>1?a.path[a.path.length-2]:null;a.visited[back]=(a.visited[back]||0)+1;lg('来た道を引き返した。');render();}
 function v6EmergencyReturn(){
   if(!S.v6Adventure||S.battle)return;const shortage=!v6CanPayMove();S.day++;S.res.fatigue=cl(S.res.fatigue+(shortage?14:7),0,100);
   if(shortage){S.res.injury=cl(S.res.injury+2,0,100);living(S.party).forEach(u=>u.hp=Math.max(1,u.hp-2));lg('物資不足のため強行帰還。負傷とHP消耗を受けた。');}
@@ -9150,7 +9150,7 @@ function v6RenderAdventure(){
     if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=false;return;
   }
   const a=S.v6Adventure,g=v6Graph(a.region),n=g[a.at],w=S.v6World?.[a.region];let actions=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
-  if(a.previous)actions+='<button onclick="v6Back()">← 一つ前の地点へ戻る</button>';actions+='<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（物資不足・負傷覚悟）')+'</button>';
+  if(Array.isArray(a.path)&&a.path.length>1)actions+='<button onclick="v6Back()">← 一つ前の地点へ戻る</button>';actions+='<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（物資不足・負傷覚悟）')+'</button>';
   let hazard='';if(n.hazard&&!a.resolved[a.at])hazard='<div class="v6-route-actions"><button class="primary" onclick="v6ResolveHazard(\'fight\')">戦闘で道を開く</button><button onclick="v6ResolveHazard(\'negotiate\')">交渉する</button><button onclick="v6ResolveHazard(\'avoid\')">大きく迂回する</button></div>';
   const local=(a.at==='spring'||a.at==='arrival')?'<div class="v6-route-actions"><button onclick="v6LocalAction(\'talk\')">土地の人に聞く</button><button onclick="v6LocalAction(\'gather\')">採取する</button><button onclick="v6LocalAction(\'rest\')">野営する</button></div>':'';
   const status='食料 '+S.res.food+'／水 '+S.res.water+'／疲労 '+S.res.fatigue+'/100／敵警戒 '+a.alert+(w?'｜地域変化 治安'+w.security+' 通行'+w.access+' 交易'+w.trade:'');
