@@ -221,6 +221,20 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   body.f1-shell{padding-bottom:calc(var(--f1-nav-h) + 16px + env(safe-area-inset-bottom,0px))}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* HQ progressive disclosure: do not remove old controls; keep only current decision visible. */
+.hq-fold-card{padding:6px 10px!important}
+.hq-fold-panel{width:100%;min-width:0}
+.hq-fold-panel>summary,.hq-secondary>summary,.hq-inline-more>summary{cursor:pointer;list-style-position:inside;color:#d5e5dc;font-weight:700;padding:12px 9px;min-height:44px;box-sizing:border-box;overflow-wrap:anywhere}
+.hq-fold-panel[open]>summary,.hq-secondary[open]>summary{border-bottom:1px solid var(--border);margin-bottom:10px}
+.hq-fold-panel>div,.hq-fold-panel>section{max-width:100%;min-width:0}
+.hq-secondary,.hq-inline-more{border:1px solid #39453f;border-radius:9px;background:#1a211f;margin:10px 0;padding:0 4px}
+.hq-inline-more #uxHubHint,.hq-inline-more #uxAdventureHint{padding:4px 9px 12px;margin:0}
+.hq-cost{padding:10px;border-radius:8px;background:#202d27;border:1px solid #47584d;font-size:12px;line-height:1.5}
+#v6AdventurePanel>h3{font-size:15px;margin:10px 0 5px}
+#uxBattleBoardCard{scroll-margin-top:90px}
+#battleCommandCard .battle-action-note{border-left:3px solid #a8caac;padding-left:10px;line-height:1.7}
+@media(max-width:480px){.hq-fold-panel>summary,.hq-secondary>summary{font-size:14px}}
 </style>
 </head>
 <body>
@@ -517,7 +531,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
       <h2 id="battleBoardTitle">7区画戦場</h2>
       <span class="s" id="battleBoardHelp">標準移動1区画／高速・間合いで2区画。乱戦・射程・位置を表示</span>
     </div>
-    <details id="uxBattleQuickGuide"><summary>初めての戦闘：7区画の見方（開く）</summary><p>左3区画＝味方側、中央＝接戦地帯、右3区画＝敵側。前衛が近づき、槍は中距離、弓は後方から攻撃します。武器の射程と敵の位置を確認しましょう。</p><p>戦闘開始時は「攻撃/接近の案をセットする」で候補を確認し、問題なければ「選択した行動で1ターン実行」。提案は安全を保証しません。撤退・交渉も状況次第で選べます。</p></details>
+    <details id="uxBattleQuickGuide"><summary>初めての戦闘：8列×3行の見方</summary><p>左3列＝味方、中央2列＝中立、右3列＝敵。味方の駒を選び、移動したい空きマスを押して移動指示を出します。縦方向も移動可能。射程は距離と障害物で判定されるため、攻撃不能なら位置を変えましょう。</p><p>戦闘開始時は「攻撃/接近の案をセットする」で候補を確認し、問題なければ「選択した行動で1ターン実行」。提案は安全を保証しません。撤退・交渉も状況次第で選べます。</p></details>
     <div class="v6-board-wrap"><div id="board" class="lanes"></div></div>
   </div>
 
@@ -528,8 +542,8 @@ button:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus
   </div>
   <section class="c" id="battleCommandCard" aria-label="戦闘中の味方行動コマンド" hidden>
     <h2>味方の行動選択 → 実行</h2>
-    <p class="s">注意：主人公が戦闘不能になると、通貨・素材・携行物資・パーティー携行武器をすべて失います。撤退も判断の一つです。</p>
-    <p class="battle-action-note">前回の指示は基本的に維持されます。状況に応じて標的や移動を変更できます。自律の仲間は自分で判断します。</p>
+    <p class="s">注意：主人公だけが戦闘不能でも、仲間が戦えるなら戦闘は続きます。仲間が勝てば代価付き救護。全員が戦闘不能になると敗北し、携行品を失います。危険なら撤退を選べます。</p>
+    <p class="battle-action-note">① 味方の駒・行動を選ぶ → ② 射程外や遮蔽物があるなら、空きマスを押して移動先を指定 → ③ 「1ターン実行」。自律の仲間は自分で動きます。</p>
     <div class="row"><button onclick="uxBattleSuggest()">攻撃/接近の案をセットする（実行は別）</button><button onclick="uxBattleReuse()">前のターンの指示を復元</button></div>
     <p class="ux-hint" id="uxBattleForecast">敵の射程や味方の位置を見て判断してください。</p>
     <div id="battlePartyHost"></div>
@@ -7439,7 +7453,8 @@ function render(){
   try{ uxRenderGuide(); }catch(e){} // Player-facing summary: display only, no S writes
   try{ uxRenderFirstJourneyCoach(); }catch(e){console.warn("UX first quest guidance",e);}
   try{ uxRenderLifePreview();uxRenderGatherStatus();uxRenderPlanTradeoffs();uxRenderJourney();v5RenderContact();v5RenderLocalEpisode();uxRenderCommodity();uxRenderBattleForecast();uxRenderTodaySituation();uxRenderContextUI(); }catch(e){console.warn('UX display failed',e);} // UX read-only previews
-  try{v6RenderAdventure();}catch(e){console.warn('V6 adventure render',e);}
+  try{if(window.__hqV6Initialized)v6RenderAdventure();}catch(e){console.warn('V6 adventure render',e);}
+  if(window.__hqV6Initialized){try{hqProgressiveRefresh();if(window.F1Shell)F1Shell.refreshHud();}catch(e){console.warn('HQ UX render',e);}}
 }
 
 /* HQ player-first read-only presentation: never mutate S, consume RNG or save. */
@@ -7453,11 +7468,11 @@ function uxRenderFirstJourneyCoach(){
   const pulse=document.getElementById('uxWorldPulseLine');
   if(!step||!next||!btn||!pulse)return;
   let phase='1/4 依頼を選ぶ';
-  let detail='初めての旅なら調査・採取など戦闘を避けられる仕事がおすすめ。討伐は危険で、主人公が倒れると携行品を失う。敗北後も日雇い・採集で立て直せます。';
+  let detail='初めての旅なら調査・採取など戦闘を避けられる仕事がおすすめ。討伐は危険で、主人公だけが倒れても仲間が勝てば救護されます。全滅すると携行品を失います。敗北後も日雇い・採集で立て直せます。';
   let target='uxQuestCard';
   if(S.battle){
     phase='3/4 戦闘の判断';
-    detail='主人公が倒れると携行品を失います。敵の位置・射程・HPを確認し、危険なら撤退や交渉も検討。「攻撃/接近の案」を確認してから1ターン実行。';
+    detail='主人公だけが倒れても仲間は戦闘を続けられます。全滅時は携行品を失います。敵の位置・射程・HPを確認し、危険なら撤退や交渉も検討。「攻撃/接近の案」を確認してから1ターン実行。';
     target='battleCommandCard';
   } else if(S.v4Events?.active){
     phase='3/4 道中の出来事';
@@ -7481,7 +7496,7 @@ function uxRenderFirstJourneyCoach(){
     target='uxQuestCard';
   } else if(S.quest){
     phase='1/4 依頼と目的地を確認';
-    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼を確認し、旅の目的を「依頼」にして出発しましょう。討伐は主人公が倒れると携行品を失う危険があります。初心者は調査・採取や撤退も選べます。';
+    detail='今は「'+String(S.quest.type||'依頼')+'」が選択されています。依頼を確認し、旅の目的を「依頼」にして出発しましょう。討伐で全滅すると携行品を失います。主人公だけが倒れた場合は仲間が救える可能性があります。初心者は調査・採取や撤退も選べます。';
     target='uxQuestCard';
   }
   step.textContent=phase; next.textContent=detail;
@@ -7500,7 +7515,7 @@ function uxRenderFirstJourneyCoach(){
 function uxFirstJourneyGo(){
   if(typeof F1Shell!=='undefined'&&typeof F1Shell.showPane==='function')F1Shell.showPane('adv');
   const target=document.getElementById(uxFirstJourneyAnchor)||document.getElementById('uxQuestCard');
-  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+  if(target){const fold=target.querySelector(':scope > details.hq-fold-panel');if(fold)fold.open=true;target.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 
 function uxRenderGuide(){
@@ -7521,7 +7536,7 @@ function uxRenderGuide(){
   else if(S.away){title='到着地から何をする？';step='現地を起点に探索・採集・休息・人との会話・帰還を選べる。';}
   const story='現在地：'+here+' ／ 旅の'+(S.day||1)+'日目\n'+(S.away?'関わっている依頼：':'選んでいる依頼：')+currentQuest+'\n'+step;
   const heroHp=S.party?.[0]?.hp??'不明';
-  const dangerNote='\n主人公HP '+heroHp+'／'+(S.party?.[0]?.maxHp??'?')+'。戦闘不能になると所持金・素材・携行物資・武器を全ロスします。';
+  const dangerNote='\n主人公HP '+heroHp+'／'+(S.party?.[0]?.maxHp??'?')+'。主人公だけのKOでは戦闘継続可能。全滅による敗北時は携行品を失います。';
   const resetNote=(S.uxLossCount||0)>0?'\n復旧の選択肢：拠点で日雇い労働、または非戦闘採集依頼。':'';
   const hint='手持ち：食料 '+food+'、水 '+water+'、疲労 '+fatigue+'。\n'+rumor+dangerNote+resetNote;
   for(const prefix of ['uxHub','uxAdventure']){
@@ -9146,15 +9161,19 @@ function v6SceneSvg(kind,region){
 function v6RenderAdventure(){
   if(!S)return;const host=document.getElementById('uxAdventureGuide')||document.querySelector('#f1Pane_adv .ux-lead')||document.getElementById('f1Pane_adv');let panel=document.getElementById('v6AdventurePanel');
   if(!S.away||!S.v6Adventure||!S.v6Adventure.active){const region=S.world?.region||'灰風平原',town=S.world?.town||'拠点',style=v6Style(region);
-    const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">V6 街と旅の入口</div><h2>'+v6Esc(town+' — '+region)+'</h2><div class="v6-scene">'+v6SceneSvg('town',region)+'<div class="v6-scene-caption">'+v6Esc(style.mark+'の見える街。施設・住人・依頼・世界状態は既存機能へ接続。')+'</div></div><div class="v6-route-actions"><button onclick="openShop()">市場</button><button onclick="openSmith()">鍛冶場</button><button onclick="townRest()">宿と救護</button><button onclick="genQuest()">依頼掲示</button><button onclick="F1Shell.showPane(\'world\')">世界を観察</button></div></section>';
-    if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=false;return;
+    const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">V6 街と旅の入口</div><h2>'+v6Esc(town+' — '+region)+'</h2><div class="v6-scene">'+v6SceneSvg('town',region)+'<div class="v6-scene-caption">'+v6Esc(style.mark+'の見える街。施設・住人・依頼・世界状態は既存機能へ接続。')+'</div></div><details class="hq-secondary"><summary>町の施設・追加操作</summary><div class="v6-route-actions"><button onclick="openShop()">市場</button><button onclick="openSmith()">鍛冶場</button><button onclick="townRest()">宿と救護</button><button onclick="genQuest()">依頼掲示</button><button onclick="F1Shell.showPane(\'world\')">世界を観察</button></div></details></section>';
+    if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=!S.away||S.battle||S.phase!=='exploration';return;
   }
   const a=S.v6Adventure,g=v6Graph(a.region),n=g[a.at],w=S.v6World?.[a.region];let actions=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
   if(Array.isArray(a.path)&&a.path.length>1)actions+='<button onclick="v6Back()">← 一つ前の地点へ戻る</button>';actions+='<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（物資不足・負傷覚悟）')+'</button>';
   let hazard='';if(n.hazard&&!a.resolved[a.at])hazard='<div class="v6-route-actions"><button class="primary" onclick="v6ResolveHazard(\'fight\')">戦闘で道を開く</button><button onclick="v6ResolveHazard(\'negotiate\')">交渉する</button><button onclick="v6ResolveHazard(\'avoid\')">大きく迂回する</button></div>';
   const local=(a.at==='spring'||a.at==='arrival')?'<div class="v6-route-actions"><button onclick="v6LocalAction(\'talk\')">土地の人に聞く</button><button onclick="v6LocalAction(\'gather\')">採取する</button><button onclick="v6LocalAction(\'rest\')">野営する</button></div>':'';
   const status='食料 '+S.res.food+'／水 '+S.res.water+'／疲労 '+S.res.fatigue+'/100／敵警戒 '+a.alert+(w?'｜地域変化 治安'+w.security+' 通行'+w.access+' 交易'+w.trade:'');
-  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">V6 '+v6Esc(a.region)+' — 分岐・再訪</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="s">経路：'+a.path.map(x=>v6Esc(g[x]?.title||x)).join(' › ')+'</p>'+hazard+local+'<div class="v6-route-actions">'+actions+'</div></section>';
+  const unitCost=Math.max(1,living(S.party).length);const moveTip='1地点移動：食料'+unitCost+'・水'+unitCost+'・1日・疲労+5。街へ帰る場合は帰還費用と未達成依頼に注意。';
+  const optionalActions=(Array.isArray(a.path)&&a.path.length>1?'<button onclick="v6Back()">← 来た道を引き返す</button>':'')+'<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（強行・負傷あり）')+'</button>';
+  const forward=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
+  const needsDecision=n.hazard&&!a.resolved[a.at];
+  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
   if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=true;
 }
 
@@ -9761,9 +9780,9 @@ function uxBattleSuggest(){
   if(!S?.battle)return;
   for(const u of S.party||[]){
     if(u.hp<=0||!(u.hero||u.mode==='指示'))continue;
-    const enemies=living(S.en).sort((a,b)=>dist(u,a)-dist(u,b));
+    const enemies=living(S.en).sort((a,b)=>S.v6Battle?v6Distance(u,a)-v6Distance(u,b):dist(u,a)-dist(u,b));
     const t=enemies[0];if(!t)continue;
-    if(canHit(u,t)){u.act='attack';u.targetId=t.id;}
+    if((S.v6Battle?v6CanHit(u,t):canHit(u,t))){u.act='attack';u.targetId=t.id;}
     else {u.act='move';u.targetId=t.id;u.moveDir=u.cell<t.cell?1:-1;u.moveSteps=canMoveTwo(u)?2:1;}
   }
   lg('攻撃・接近の候補をセットした。敵の反撃や危険は保証されません。確認してからターンを実行してください。');render();
@@ -10500,6 +10519,70 @@ function uxRenderTodaySituation(){
 
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
 
+
+/* HQ V6 UX simplification / player-facing presentation only. No game state or Save schema changes. */
+function hqFoldCard(id,label){
+  const host=document.getElementById(id);if(!host||host.querySelector(':scope > details.hq-fold-panel'))return;
+  const inner=document.createElement('details');inner.className='hq-fold-panel';
+  const summary=document.createElement('summary');summary.textContent=label;inner.appendChild(summary);
+  while(host.firstChild)inner.appendChild(host.firstChild);
+  host.appendChild(inner);host.classList.add('hq-fold-card');
+}
+function hqFriendlyWorldIds(){
+  const re=/ag_([^\s、。,:;「」『』()（）\[\]<>]+?)_(raider|merchant|guard)_(\d+)/g;
+  const label={raider:'襲撃者',merchant:'商隊',guard:'警備隊'};
+  for(const rootId of ['f1Pane_hub','f1Pane_adv','f1Pane_world','f1Pane_log']){
+    const root=document.getElementById(rootId);if(!root)continue;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    let node,count=0;while((node=walker.nextNode())&&count++<2500){
+      if(!node.nodeValue.includes('ag_'))continue;
+      node.nodeValue=node.nodeValue.replace(re,(_,region,role)=>region+'の'+label[role]);
+    }
+  }
+}
+function hqProgressiveRefresh(){
+  if(!document.getElementById('hqUXReady'))return;
+  // Keep essential route and battle actions visible. Only secondary tools fold.
+  const hadV6=!!(S&&S.v6Adventure&&S.v6Adventure.active);
+  const field=document.querySelector('#uxFieldCard > details.hq-fold-panel');
+  if(field){const mode=hadV6?'extra':'primary';if(field.dataset.mode!==mode){field.open=mode==='primary';field.dataset.mode=mode;}}
+  const guide=document.getElementById('uxFirstJourneyNext');
+  if(guide&&S&&S.v6Adventure?.active&&!S.battle){
+    guide.textContent='地点の絵の下から次の進路を選ぼう。1地点進むごとに食料・水・日数が必要。ほかの生活・調査操作は「現地生活の詳しい操作」を開けます。';
+    const next=document.getElementById('uxFirstJourneyGo');if(next)next.textContent='探索の進路へ';
+    uxFirstJourneyAnchor='v6AdventurePanel';
+  }
+  hqFriendlyWorldIds();
+}
+function hqProgressiveInit(){
+  const folded=[
+    ['surv',''], // status content only, not a card: handled separately below
+    ['uxCommodityCard','道具・素材の売買と倉庫（追加操作）'],
+    ['f2LifeCard','休養・装備・長期生活を設定'],
+    ['uxQuestCard','依頼を探す・受ける（掲示板を開く）'],
+    ['uxFieldCard','現地生活の詳しい操作（調査・採集・小仕事）'],
+    ['uxCampCard','野営の詳しい行動'],
+    ['uxBattleEnemiesCard','敵の能力・状態を詳しく見る'],
+    ['battleLogCard','戦闘ログの全文を確認']
+  ];
+  folded.slice(1).forEach(([id,label])=>hqFoldCard(id,label));
+  const survival=document.getElementById('surv');if(survival&&survival.parentElement){
+    const wrapper=survival.parentElement;const heading=wrapper.querySelector('h2');if(heading){
+      const d=document.createElement('details');d.className='hq-fold-panel';const summary=document.createElement('summary');summary.textContent='所持品・体調を詳しく確認';d.appendChild(summary);d.appendChild(survival);heading.replaceWith(d);wrapper.classList.add('hq-fold-card');
+    }
+  }
+  for(const id of ['uxHubHint','uxAdventureHint']){
+    const content=document.getElementById(id);if(!content||!content.parentElement)continue;
+    const d=document.createElement('details');d.className='hq-inline-more';
+    const summary=document.createElement('summary');summary.textContent='物資・危険の詳しい説明';
+    content.parentElement.insertBefore(d,content);d.appendChild(summary);d.appendChild(content);
+  }
+  // Leave primary battle command and actionable event cards open.
+  const marker=document.createElement('span');marker.id='hqUXReady';marker.hidden=true;document.body.appendChild(marker);
+}
+window.__hqV6Initialized=true;
+hqProgressiveInit();
+try{v6RenderAdventure();hqProgressiveRefresh();if(window.F1Shell)F1Shell.refreshHud();}catch(e){console.warn('HQ initial display',e);}
 </script>
 </body>
 </html>
