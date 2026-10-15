@@ -9142,6 +9142,46 @@ function v6ResolveObjective(kind){
   if(kind==='gather'&&q.type==='採取'&&!q.done){q.v6Gather=(q.v6Gather||0)+1;if(q.v6Gather>=2){q.done=1;v6ApplyOutcome('gathered');lg('指定地域で必要な採取量を確保。現在の採取依頼だけが達成になった。');}else lg('指定素材を一部確保（1/2）。別の進路でもう一度採取が必要。');return true;}
   return false;
 }
+/* V7: two regional choice encounters per territory, once per route node per journey. */
+const V7_LOCAL_EVENTS={
+  "灰風平原":{safe:{title:"商隊の轍に残る木箱",text:"砂に埋まった荷箱を調べるか、先を急ぐか。",effect:"scrap"},
+    wild:{title:"風車跡の見張り丘",text:"高台に登って敵の足跡を読むか、そのまま進むか。",effect:"intel"}},
+  "碧森辺境":{safe:{title:"倒木の下の薬草",text:"危険な倒木際の草を採るか、道を守るか。",effect:"herb"},
+    wild:{title:"森番の古い道標",text:"古い目印から警戒路を読み解くか、深入りせず進むか。",effect:"intel"}},
+  "赤土丘陵":{safe:{title:"乾谷の崩れた鉱脈",text:"落石を避けて鉱石を拾うか、近づかず通るか。",effect:"ore"},
+    wild:{title:"砦の壁から落ちた金具",text:"崩れた金具を回収するか、そのまま進むか。",effect:"scrap"}},
+  "セラ川下流湿地":{safe:{title:"浅瀬の清水",text:"増水前に水袋へ補給するか、足元を優先するか。",effect:"water"},
+    wild:{title:"葦原の湿地薬草",text:"足を取られる湿地へ入って薬草を採るか、退くか。",effect:"herb"}},
+  "ベルク北峠旧軍道":{safe:{title:"廃見張台の狼煙記録",text:"見張台跡で敵の巡回を調べるか、寒さを避けて先へ進むか。",effect:"intel"},
+    wild:{title:"炭焼き小屋の残り水",text:"古い桶を確かめて補給するか、峠道を急ぐか。",effect:"water"}},
+  "東部採石路":{safe:{title:"採石場の転がり鉱石",text:"落石に注意して鉱石を拾うか、荷を軽くして進むか。",effect:"ore"},
+    wild:{title:"トロッコ軌道の廃材",text:"軌道沿いの留め具を集めるか、崩落地を離れるか。",effect:"scrap"}},
+  "風車牧野":{safe:{title:"牧柵に残る毛皮片",text:"破れた革を回収するか、羊を驚かせず通るか。",effect:"hide"},
+    wild:{title:"風よけの牧草小屋",text:"物資を使い休息するか、風の中を進むか。",effect:"rest"}},
+  "南湖干潟":{safe:{title:"干上がった舟の水壺",text:"水壺を確認して補給するか、潮が戻る前に進むか。",effect:"water"},
+    wild:{title:"漁網に絡まる古い革",text:"古い革を外して回収するか、漁場を荒らさず先へ進むか。",effect:"hide"}},
+  "街道宿場跡":{safe:{title:"倒れた荷車の工具",text:"壊れた荷車の金具を回収するか、構わず通るか。",effect:"scrap"},
+    wild:{title:"旧料金所の見張り穴",text:"料金所から危険な進路を調べるか、遠回りせず進むか。",effect:"intel"}}
+};
+function v7LocalEventAction(choice){
+  const a=S?.v6Adventure;if(!a||!a.active||S.battle)return;
+  const e=V7_LOCAL_EVENTS[a.region]?.[a.at],key='v7_event_'+a.at;
+  if(!e||a.resolved[key])return;
+  if(choice==='pass'){a.resolved[key]='passed';lg('「'+e.title+'」には寄らず進むことにした。');render();return;}
+  if(choice!=='investigate')return;
+  if(!v6PayMove(e.title+'の調査'))return;
+  let reward='';
+  if(['herb','scrap','ore','hide'].includes(e.effect)){
+    S.materials=S.materials||{};S.materials[e.effect]=(Number(S.materials[e.effect])||0)+1;
+    reward=({herb:'薬草',scrap:'廃材',ore:'鉱石',hide:'獣皮'})[e.effect]+'を1入手';
+    a.alert=cl(a.alert+2,0,100);
+  }else if(e.effect==='intel'){a.alert=cl(a.alert-9,0,100);reward='敵警戒を9低下';}
+  else if(e.effect==='water'){S.res.water=(Number(S.res.water)||0)+2;reward='水を2補給';}
+  else if(e.effect==='rest'){S.res.fatigue=cl(S.res.fatigue-19,0,100);reward='疲労を19軽減';}
+  a.resolved[key]='investigated';a.outcomes.push({day:S.day,type:'v7_local_event',event:e.title,node:a.at,region:a.region});
+  a.outcomes=a.outcomes.slice(-30);
+  lg('「'+e.title+'」を調査。'+reward+'。時間・食料・水を消費した。');render();
+}
 function v6LocalAction(kind){
   const a=S.v6Adventure;if(!a||S.battle)return;
   if(kind==='talk'){if(!v6PayMove('聞き込み'))return;a.alert=cl(a.alert-4,0,100);a.outcomes.push({day:S.day,type:'talk',node:a.at});lg('土地の住人から危険と迂回路を聞いた。敵警戒が少し下がった。');}
@@ -9181,13 +9221,15 @@ function v6RenderAdventure(){
   const a=S.v6Adventure,g=v6Graph(a.region),n=g[a.at],w=S.v6World?.[a.region];let actions=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
   if(Array.isArray(a.path)&&a.path.length>1)actions+='<button onclick="v6Back()">← 一つ前の地点へ戻る</button>';actions+='<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（物資不足・負傷覚悟）')+'</button>';
   let hazard='';if(n.hazard&&!a.resolved[a.at])hazard='<div class="v6-route-actions"><button class="primary" onclick="v6ResolveHazard(\'fight\')">戦闘で道を開く</button><button onclick="v6ResolveHazard(\'negotiate\')">交渉する</button><button onclick="v6ResolveHazard(\'avoid\')">大きく迂回する</button></div>';
+  const v7event=V7_LOCAL_EVENTS[a.region]?.[a.at],v7done=a.resolved['v7_event_'+a.at];
+  const v7eventPanel=v7event&&!v7done?'<div class="hq-secondary"><h3>'+v6Esc(v7event.title)+'</h3><p>'+v6Esc(v7event.text)+'</p><div class="v6-route-actions"><button onclick="v7LocalEventAction(\'investigate\')">物資と一日を使って調べる</button><button onclick="v7LocalEventAction(\'pass\')">調べず進む</button></div></div>':'';
   const local=(a.at==='spring'||a.at==='arrival')?'<div class="v6-route-actions"><button onclick="v6LocalAction(\'talk\')">土地の人に聞く</button><button onclick="v6LocalAction(\'gather\')">採取する</button><button onclick="v6LocalAction(\'rest\')">野営する</button></div>':'';
   const status='食料 '+S.res.food+'／水 '+S.res.water+'／疲労 '+S.res.fatigue+'/100／敵警戒 '+a.alert+(w?'｜地域変化 治安'+w.security+' 通行'+w.access+' 交易'+w.trade:'');
   const unitCost=Math.max(1,living(S.party).length);const moveTip='1地点移動：食料'+unitCost+'・水'+unitCost+'・1日・疲労+5。街へ帰る場合は帰還費用と未達成依頼に注意。';
   const optionalActions=(Array.isArray(a.path)&&a.path.length>1?'<button onclick="v6Back()">← 来た道を引き返す</button>':'')+'<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（強行・負傷あり）')+'</button>';
   const forward=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
   const needsDecision=n.hazard&&!a.resolved[a.at];
-  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
+  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+v7eventPanel+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
   if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=true;
 }
 
