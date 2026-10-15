@@ -3326,20 +3326,6 @@ function startingParty(){
   return party;
 }
 const MON={
-  // V7 content competition: regional threats. Effects beyond existing stats/roles are future candidates.
-  "灰風放浪剣士":{hp:10,spd:9,atk:5,def:1,category:"刀",weapon:"旅刀",range:1,behavior:"charger"},
-  "森縁の蔦使い":{hp:9,spd:5,atk:3,def:1,category:"弓",weapon:"蔦投げ",range:2,behavior:"archer"},
-  "荒野野盗頭目":{hp:14,spd:5,atk:5,def:3,category:"片手剣",weapon:"野盗の剣",range:1,behavior:"guard"},
-  "沼地毒蛇":{hp:8,spd:8,atk:4,def:1,category:"刀",weapon:"牙",range:1,behavior:"charger"},
-  "山岳山猫":{hp:9,spd:10,atk:4,def:1,category:"刀",weapon:"爪",range:1,behavior:"charger"},
-  "廃坑蝙蝠群":{hp:7,spd:10,atk:3,def:1,category:"刀",weapon:"群れの牙",range:1,behavior:"charger"},
-  "牧柵の狼":{hp:8,spd:10,atk:5,def:1,category:"刀",weapon:"牙",range:1,behavior:"charger"},
-  "霧隠れの蟹":{hp:14,spd:3,atk:4,def:5,category:"片手剣",weapon:"鋏",range:1,behavior:"guard"},
-  "宿場の徴収役":{hp:12,spd:5,atk:4,def:3,category:"片手剣",weapon:"警棒",range:1,behavior:"guard"},
-  "平原の騎走斥候":{hp:9,spd:10,atk:4,def:1,category:"槍",weapon:"騎走槍",range:2,behavior:"charger"},
-  "採石場崩落重機兵":{hp:15,spd:2,atk:5,def:5,category:"片手剣",weapon:"石工大盾",range:1,behavior:"guard"},
-  "干潟の投網漁盗":{hp:9,spd:6,atk:3,def:1,category:"弓",weapon:"投網",range:2,behavior:"archer"},
-
   ゴブリン:{hp:8,spd:6,atk:4,def:1,category:"片手剣",weapon:"粗雑なナイフ",range:1,behavior:"normal"},
   オオカミ:{hp:7,spd:9,atk:4,def:1,category:"刀",weapon:"牙",range:1,behavior:"charger"},
   スライム:{hp:11,spd:3,atk:3,def:2,category:"刀",weapon:"核",range:1,behavior:"normal"},
@@ -9206,32 +9192,6 @@ function v6PlaceUnits(){
   const used=new Set(),place=(u,x,y)=>{let guard=0;while(used.has(x+','+y)&&guard++<9){y=(y+1)%3;if(y===0)x+=u.side==='ally'?-1:1;}u.v6x=cl(x,0,7);u.v6y=y;used.add(u.v6x+','+u.v6y);};
   living(S.party).forEach((u,i)=>place(u,2-Math.floor(i/3),i%3));living(S.en).forEach((u,i)=>place(u,5+Math.floor(i/3),i%3));
 }
-/* V7 regional battle variety. Existing quest targets, 8x3 zones and save format remain intact. */
-const V7_REGION_BATTLE_TERRAIN={
-  "灰風平原":[{x:4,y:0,type:"brush"}],
-  "碧森辺境":[{x:3,y:0,type:"trunk"},{x:4,y:2,type:"trunk"}],
-  "赤土丘陵":[{x:3,y:0,type:"rock"},{x:4,y:0,type:"rock"}],
-  "セラ川下流湿地":[{x:3,y:2,type:"reed"},{x:4,y:0,type:"reed"}],
-  "ベルク北峠旧軍道":[{x:3,y:0,type:"wall"},{x:4,y:2,type:"wall"}],
-  "東部採石路":[{x:3,y:1,type:"rock"},{x:4,y:0,type:"rock"}],
-  "風車牧野":[{x:3,y:0,type:"fence"},{x:4,y:0,type:"fence"}],
-  "南湖干潟":[{x:3,y:2,type:"stakes"},{x:4,y:2,type:"stakes"}],
-  "街道宿場跡":[{x:3,y:0,type:"wagon"},{x:4,y:1,type:"crate"}]
-};
-const V7_REGION_THREATS={
-  "灰風平原":["灰風放浪剣士","平原の騎走斥候"],
-  "碧森辺境":["森縁の蔦使い","森の射手"],
-  "赤土丘陵":["荒野野盗頭目","盾持ち傭兵"],
-  "セラ川下流湿地":["沼地毒蛇","湿地猟犬"],
-  "ベルク北峠旧軍道":["山岳山猫","峠道斥候"],
-  "東部採石路":["廃坑蝙蝠群","採石場崩落重機兵"],
-  "風車牧野":["牧柵の狼","野猪"],
-  "南湖干潟":["霧隠れの蟹","干潟の投網漁盗"],
-  "街道宿場跡":["宿場の徴収役","ゴブリン"]
-};
-function v7BattleObstacles(region){
-  return (V7_REGION_BATTLE_TERRAIN[region]||[{x:3,y:1,type:"ruin"}]).map(o=>({...o}));
-}
 function v6MakeEnemy(mon,i){
   const m=MON[mon]||MON.ゴブリン;
   return makeUnit({id:'v6e_'+S.day+'_'+i,name:mon+(i+1),side:'enemy',cell:Math.min(6,4+i),stats:{hp:m.hp,atk:m.atk,def:m.def,spd:m.spd},category:m.category,weaponName:m.weapon,range:m.range,behavior:m.behavior});
@@ -9239,12 +9199,11 @@ function v6MakeEnemy(mon,i){
 function v6StartBattle(){
   const a=S.v6Adventure,node=v6Graph(a.region)[a.at],q=S.quest;
   const questMatch=!!(q&&a.contract&&a.contract.title===(q.title||questTitle(q))&&a.contract.region===a.region&&['討伐','護衛'].includes(q.type));
-  const enemies=regionProfile(a.region).enemies,regional=V7_REGION_THREATS[a.region]||enemies;
-  const primary=questMatch?(q.mon||enemies[0]):(regional[0]||enemies[0]||'ゴブリン');
+  const enemies=regionProfile(a.region).enemies,primary=questMatch?(q.mon||enemies[0]):(a.at==='danger'?'オオカミ':enemies[1]||'ゴブリン');
   const count=Math.max(2,Math.min(5,questMatch?(q.n||3):2+(a.alert>=15?1:0)));
-  S.en=Array.from({length:count},(_,i)=>v6MakeEnemy(i===0?primary:(questMatch?enemies[(i-1)%enemies.length]:(i%2?regional[1]||enemies[0]:enemies[i%enemies.length])),i));
+  S.en=Array.from({length:count},(_,i)=>v6MakeEnemy(i?enemies[i%enemies.length]:primary,i));
   S.v6Battle={version:1,active:true,turn:1,region:a.region,nodeId:a.at,enemyGroup:primary,objectiveId:questMatch?(a.contract.title+'|'+a.region+'|'+(q.place||'')):null,questMatch:questMatch,rewarded:false,
-    obstacles:v7BattleObstacles(a.region)};
+    obstacles:a.at==='danger'?[{x:3,y:0,type:'rock'},{x:4,y:2,type:'brush'}]:[{x:3,y:1,type:'ruin'}]};
   v6PlaceUnits();S.battle=true;S.phase='battle';S.away=true;S.heroRescuePending=false;a.resolved[a.at]='engaged';
   lg('【V6戦闘】'+node.title+'で'+primary+'の集団と接敵。8列×3行の実座標戦闘を開始。');render();
 }
@@ -9290,27 +9249,8 @@ function v6Attack(atk,target,defending,protectors){
 }
 function v6Plan(u){
   if(u.side==='ally'&&(u.hero||u.mode==='指示'))return {act:u.act,target:findU(u.targetId),move:u.v6MoveTarget||null};
-  const foes=living(u.side==='ally'?S.en:S.party).sort((a,b)=>v6Distance(u,a)-v6Distance(u,b)),nearest=foes[0];if(!nearest)return {act:'defend'};
-  // Distinct decisions: guard protects shooters, archers keep distance, chargers pressure weakened units.
-  if(u.side==='enemy'&&u.behavior==='guard'){
-    const vulnerable=living(S.en).find(e=>e.id!==u.id&&e.behavior==='archer'&&v6Distance(u,e)<=1&&foes.some(f=>v6Distance(e,f)<=rangeOf(f)+1));
-    if(vulnerable&&u.hp>Math.ceil(u.maxHp*.25))return {act:'protect',target:vulnerable};
-  }
-  if(u.hp<=Math.ceil(u.maxHp*.25))return {act:'defend',target:nearest};
-  if(u.behavior==='archer'){
-    const hittable=foes.find(f=>v6CanHit(u,f));
-    if(hittable)return {act:'attack',target:hittable};
-    // A ranged unit trapped in melee attempts a legal retreat, instead of always charging.
-    if(v6Distance(u,nearest)===1){
-      const retreat=[[u.v6x+(u.side==='enemy'?1:-1),u.v6y],[u.v6x,u.v6y-1],[u.v6x,u.v6y+1]]
-        .find(([x,y])=>x>=0&&x<8&&y>=0&&y<3&&!v6Occupied(x,y,u.id)&&Math.abs(x-nearest.v6x)+Math.abs(y-nearest.v6y)>1);
-      if(retreat)return {act:'move',move:{x:retreat[0],y:retreat[1]}};
-    }
-  }
-  const target=u.behavior==='charger'?(foes.slice().sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0]||nearest):nearest;
-  if(v6CanHit(u,target))return {act:'attack',target};
-  if(v6CanHit(u,nearest))return {act:'attack',target:nearest};
-  return {act:'move',target:nearest};
+  const foes=living(u.side==='ally'?S.en:S.party).sort((a,b)=>v6Distance(u,a)-v6Distance(u,b)),t=foes[0];if(!t)return {act:'defend'};
+  if(u.hp<=Math.ceil(u.maxHp*.25))return {act:'defend',target:t};if(v6CanHit(u,t))return {act:'attack',target:t};return {act:'move',target:t};
 }
 function v6ResolveTurn2D(){
   if(!S.battle||!S.v6Battle)return;const defending=new Set(),protectors=new Map(),plans=v6BattleUnits().map(u=>({u,p:v6Plan(u)})).sort((a,b)=>eff(b.u).spd-eff(a.u).spd);
