@@ -9128,7 +9128,10 @@ function v6MoveNode(to){
   const a=S.v6Adventure;if(!a||S.battle)return;const g=v6Graph(a.region),node=g[a.at];
   if(!node||!node.exits.includes(to)){lg('その方向へは進めない。');return;}if(node.hazard&&!a.resolved[a.at]){lg('危険を未解決のまま通過できない。戦闘・交渉・迂回を選んでください。');return;}
   if(!v6PayMove(g[to].title+'への移動'))return;a.previous=a.at;a.at=to;a.path.push(to);a.visited[to]=(a.visited[to]||0)+1;if(g[to].hazard&&!a.resolved[to])a.alert=cl(a.alert+8,0,100);
-  lg(g[to].title+'へ進んだ。食料・水・時間・疲労を消費。');if(to==='lookout')v6ResolveObjective('survey');if(to==='spring')v6ResolveObjective('gather');render();
+  lg(g[to].title+'へ進んだ。食料・水・時間・疲労を消費。'); if(to==='lookout'){
+   a.outcomes.push({day:S.day,type:'v7_observed',node:'lookout',region:a.region});a.outcomes=a.outcomes.slice(-30);
+   v6ResolveObjective('survey');
+ }if(to==='spring')v6ResolveObjective('gather');render();
 }
 function v6Back(){const a=S.v6Adventure;if(!a||S.battle||!Array.isArray(a.path)||a.path.length<2)return;const back=a.path[a.path.length-2];if(!v6Graph(a.region)[back])return;if(!v6PayMove('引き返し'))return;a.path.pop();a.at=back;a.previous=a.path.length>1?a.path[a.path.length-2]:null;a.visited[back]=(a.visited[back]||0)+1;lg('来た道を引き返した。');render();}
 function v6EmergencyReturn(){
@@ -10071,16 +10074,16 @@ function uxRenderTodaySituation(){
     'plain_io': {
       name: '荷馬車のイオ',
       region: '灰風平原',
-      firstMeet: 'こんにちは、旅の人。灰風平原を走るには、風の読み方が重要だ。あなたはまだ、この土地の気質をahamiないな。',
-      noIncident: '草原の通り道は、嵐が来ると姿を変える。今どんな様子か、 직접確かめてみるしかない。',
+      firstMeet: 'こんにちは、旅の人。灰風平原を走るには、風の読み方が重要だ。あなたはまだ、この土地の気質を分かっていないようだな。',
+      noIncident: '草原の通り道は、嵐が来ると姿を変える。今どんな様子か、自分で確かめてみるしかない。',
       successReturn: 'よく戻ってきた。街道の状況が少しはましになっているのを、感じるだろう？　風が教えてくれるんだ。',
-      failureReturn: ' 힘들었겠다。この道は簡単じゃない。 でも情報があれば，下次は違う結果になる。',
-      revisitImproved: '空気が変わった。先週とは明显的に違う。あなたのおかげかもしれない。',
+      failureReturn: '大変だったろう。この道は簡単じゃない。 でも情報があれば、次回は違う結果になる。',
+      revisitImproved: '空気が変わった。先週とは明らかに違う。あなたのおかげかもしれない。',
       revisitUnchanged: 'まだ同じ風が吹いているな。 でも、前に比べれば少しだけ知っていることがある。',
       chains: {
         merchant: {
           intro: '積荷を渡す人が、切羽詰まった顔をしている。先払いで急いでもいいが、道は待ってくれない。',
-          introQuote: '届け先は远い。けれど、約束は約束だ。間に合うように頼む。',
+          introQuote: '届け先は遠い。けれど、約束は約束だ。間に合うように頼む。',
           act2: '街道の状況が変わった。再び運ぶなら、同じ方法は使えないかもしれない。',
           act3: '荷が届いたとの知らせがあった。あなたが届けたな。ありがとう。'
         },
@@ -10088,13 +10091,13 @@ function uxRenderTodaySituation(){
           intro: '荷馬車が襲われた痕迹がある。犯人の踪は、まだ決着していない。',
           introQuote: '見たものは報告してくれ。 俺たちではできないことがある。',
           act2: '追加の情报が届いた。犯人の线索が、少しだけはっきりした。',
-          act3: '街道が少しずつ이지만安全感を取り戻している。調査は続いている。'
+          act3: '街道が少しずつ安全を取り戻している。調査は続いている。'
         },
         guard: {
           intro: '草原の牧场が、守るべき人手を探している。報酬はわずかだが、地域にとっては重要だ。',
           introQuote: '牧场の柵を直すのを手伝ってくれないか。俺たちだけでは追いつかない。',
           act2: '柵の修理に必要な材料が集まっている。 次は設置する場所を選ぶだけだ。',
-          act3: '牧场の周围が、少しだけ安全になった。長い戦いだが、一歩ずつ進んでいる。'
+          act3: '牧場の周囲が、少しだけ安全になった。長い戦いだが、一歩ずつ進んでいる。'
         }
       }
     },
@@ -10104,9 +10107,9 @@ function uxRenderTodaySituation(){
       name: '薬師のミナ',
       region: '碧森辺境',
       firstMeet: '森林の匂いが違う。あなたはまだ、この森の声を聞いていない。薬草を集めに来たの？　それとも別の用事？',
-      noIncident: '森は静かだが、その静けさは有时 무섭다。何かが起きているのかもしれない。',
-      successReturn: '街の噂听到了。君が報告したものの一部を 이미 知っているよ。その情報ありがとうございます。',
-      failureReturn: '失败したのか。没关系、この森ではよくあることだ。 でも、得られたものは必ず後で活きる。',
+      noIncident: '森は静かだが、その静けさは時に恐ろしい。何かが起きているのかもしれない。',
+      successReturn: '街の噂を聞いた。君が報告したものの一部を既に知っているよ。教えてくれてありがとう。',
+      failureReturn: '失敗したのか。大丈夫だ、この森ではよくあることだ。 でも、得られたものは必ず後で活きる。',
       revisitImproved: '森の空気が変わった。明らかに違う。君の力のせいかもしれない。',
       revisitUnchanged: 'まだ同じ匂いがする森だ。でも、君がいるから少しだけ心強い。',
       chains: {
@@ -10135,28 +10138,28 @@ function uxRenderTodaySituation(){
     'redhill_rao': {
       name: '案内人のラウ',
       region: '赤土丘陵',
-      firstMeet: '赤土丘陵を歩くには、水の知识が大事だ。この土地の乾燥は、想象以上だ。',
+      firstMeet: '赤土丘陵を歩くには、水の知識が大事だ。この土地の乾燥は、想像以上だ。',
       noIncident: '今日は湿気が少し多いな。道は変わらないが、気压が変わる。',
       successReturn: '良い知らせを持って帰ってきたな。水場の情报は、この土地では命綱だ。',
-      failureReturn: '水が不足しているのか。没关系、この丘陵はそういう日もある。 次に期待している。',
+      failureReturn: '水が不足しているのか。大丈夫だ、この丘陵はそういう日もある。 次に期待している。',
       revisitImproved: '以前来た时と、空气の匂いが違う。何かが改善された雰囲気になる。',
       revisitUnchanged: 'まだ同じ燥いた風が吹いている。 でも、君のことは覚えているよ。',
       chains: {
         merchant: {
-          intro: '乾燥した土地に、水を运ぶ仕事がある。報酬は低いが、地域にとっては不可欠だ。',
-          introQuote: 'この土地では、水は金보다重い。届けることができれば、誰かが助かる。',
+          intro: '乾燥した土地に、水を運ぶ仕事がある。報酬は低いが、地域にとっては不可欠だ。',
+          introQuote: 'この土地では、水は金より重い。届けることができれば、誰かが助かる。',
           act2: '追加の补给先がある。この丘陵には、点在する水源がある。',
           act3: '水が指定された場所に届いた。地域で待つ人が、喜んでいるはずだ。'
         },
         raid: {
           intro: '水を巡る争いがあった痕迹がある。襲撃者が水を盗んだのか、それとも別の理由か。',
-          introQuote: '水を巡る争いは、この土地ではよくある。 但し、命に係わる 문제는別だ。',
+          introQuote: '水を巡る争いは、この土地ではよくある。 但し、命に係わる問題は別だ。',
           act2: '争いの原因が、少しずつ分かってきた。証拠を集めている最中だ。',
           act3: '水の争いは、一旦落ち着いた。だが、完全には終わっていない。'
         },
         guard: {
           intro: '案内道を直す人手を探している。この丘陵の道は、少しの知識で大幅に改善できる。',
-          introQuote: '道を 정비すれば、的水配送が楽になる。この土地変わるかもしれない。',
+          introQuote: '道を整備すれば、水の配送が楽になる。この土地変わるかもしれない。',
           act2: '一部の道は整備された。残るは、资金と人手だけだ。',
           act3: '丘陵の道が、从前より歩きやすくなった。水を運ぶ人々の脸上に、笑みが戻っている。'
         }
@@ -10169,7 +10172,7 @@ function uxRenderTodaySituation(){
       region: 'セラ川下流湿地',
       firstMeet: 'セラ川を渡るかい？　この湿地は、潮の満ち引きで道が変わる。今日は穏やかだが、明日もそうだとは限らない。',
       noIncident: '水面が静かな日は珍しい。だが、それは平安の証ではないかもしれないな。',
-      successReturn: '帰ってきたのか。川の向こう侧の状吽が、少し変わったのを感る。君のせいかもしれない。',
+      successReturn: '帰ってきたのか。川の向こう側の状況が、少し変わったのを感じる。君のせいかもしれない。',
       failureReturn: '难しかったか。 川は容赦がない。 でも、君はまだここにいる。',
       revisitImproved: '渡船の利用客が、少しだけ増えた気がする。経済が回り始めているのかもしれないな。',
       revisitUnchanged: 'まだ同じ川だ。 水面は穏やかだが、地域はまだ完全には元気じゃない。',
@@ -10184,7 +10187,7 @@ function uxRenderTodaySituation(){
           intro: '渡し場が襲われた痕跡がある。犯人は、川の流れに乗って逃げた可能性がある。',
           introQuote: '川は痕跡を消す。 でも、渡し守は見ていた。',
           act2: '目撃情报が追加された。犯人の特徴が、少しだけ分かった。',
-          act3: '川の巡逻が続く。犯人はまだ見つからないが、もう周围的は警戒している。'
+          act3: '川の巡回が続く。犯人はまだ見つからないが、もう周囲は警戒している。'
         },
         guard: {
           intro: '渡し場の设施が、老朽化している。修理するのに、协力してほしい。',
@@ -10201,14 +10204,14 @@ function uxRenderTodaySituation(){
       region: 'ベルク北峠旧軍道',
       firstMeet: '北峠を越えるのかい？　この道は、冬の間は閉ざされることもある。今の時期は通れるが、気を引き締めてかかることだ。',
       noIncident: '峠の天気は変わりやすいな。 今は穏やかだが、明日谁知道だ。',
-      successReturn: '街道の状吽が、少し変わった気がする。あなたの活動の結果かもしれないな。',
+      successReturn: '街道の状況が、少し変わった気がする。あなたの活動の結果かもしれないな。',
       failureReturn: '难しかったか。 北峠は簡単じゃない。 でも、君のことは覚えているよ。',
       revisitImproved: '以前来た时より、街道の活気が增した気がする。通过する人々の脸上を見て感じる。',
       revisitUnchanged: 'まだ同じ峠だ。 但し、君が通ったことで何かが少し変わったかもしれない。',
       chains: {
         merchant: {
           intro: '峠を越える商人の護衛を探している。危険だが、報酬は悪くない。',
-          introQuote: 'この峠を越えられれば、先の市场まで直結する。価値がある仕事だ。',
+          introQuote: 'この峠を越えられれば、先の市場まで直結する。価値がある仕事だ。',
           act2: '追加の客商がある。峠の向こう侧から、新しい需求が届いている。',
           act3: '商人が、無事に峠を越えた。市場に到着したとの知らせが届いている。'
         },
@@ -10239,7 +10242,7 @@ function uxRenderTodaySituation(){
       revisitUnchanged: 'まだ同じ石切場だ。 但し、君がここに来たことは、地域にとって意味がある。',
       chains: {
         merchant: {
-          intro: '石材运输の依頼がある。重いが、地域にとっては必要不可欠だ。',
+          intro: '石材輸送の依頼がある。重いが、地域にとっては必要不可欠だ。',
           introQuote: '石材は重い。 但し、これが無ければ、建物が建たない。',
           act2: '追加の石材搬出依頼がある。古い建物の修復に必要な石材を送りたい。',
           act3: '石材が無事に届いた。古い建物が、少しずつ修復されている。'
@@ -10248,10 +10251,10 @@ function uxRenderTodaySituation(){
           intro: '石切場が襲われた痕迹がある。石材が盗まれたのか、それとも別の理由か。',
           introQuote: '石材を盗むには、重機か大人数が必要だ。単なる物盗りではないかもしれない。',
           act2: '犯行の手がかりが追加された。石材を運ぶには、大型の荷車が必要だったはずだ。',
-          act3: '石切場の治安が、少しだけ安定した。犯人はまだ見つからないが、もう周围的は警戒している。'
+          act3: '石切場の治安が、少しだけ安定した。犯人はまだ見つからないが、もう周囲は警戒している。'
         },
         guard: {
-          intro: '採石場の设备维护を探している。報酬は少ないが、地域にとっては 중요하다。',
+          intro: '採石場の設備保守を探している。報酬は少ないが、地域にとって重要だ。',
           introQuote: 'この设备が無くなれば、地域建设が停滞する。何とかしたいんだ。',
           act2: '维护所需的材料が、少しずつ揃っている。もう少しで作業開始できる。',
           act3: '设备が修復された。採石場の作業が、少しだけ効率的になった。'
@@ -10274,7 +10277,7 @@ function uxRenderTodaySituation(){
           intro: '牧場の製品を町に運ぶ仕事がある。奶酪と Појединаは、重いが価値がある。',
           introQuote: '新鮮なうちに届けなければ、価値が下がる。急いでも、安全第一で頼む。',
           act2: '追加の納品依頼がある。牧場の製品は、季節ごとに需要が変わる。',
-          act3: '製品が、無事に町に届いた。Freshな製品が、市场に並んだ。'
+          act3: '製品が、無事に町に届いた。新鮮な品が、市场に並んだ。'
         },
         raid: {
           intro: '牧場が襲われた痕迹がある。羊が襲われたのか、苫手を盗まれたのか。',
@@ -10306,16 +10309,16 @@ function uxRenderTodaySituation(){
           intro: '漁業製品を町に運ぶ仕事がある。干物と塩수는、重いが価値がある。',
           introQuote: '新鮮なうちに届けなければ、価値が下がる。急いでも、安全第一で頼む。',
           act2: '追加の納品依頼がある。漁業製品は、季節ごとに需要が変わる。',
-          act3: '製品が、無事に町に届いた。Freshな製品が、市场に並んだ。'
+          act3: '製品が、無事に町に届いた。新鮮な品が、市场に並んだ。'
         },
         raid: {
           intro: '漁港が襲われた痕迹がある。漁船が襲われたのか、漁具を盗まれたのか。',
           introQuote: '漁港の被害は大きい。船が無くなれば、漁が続けられない。',
           act2: '追加の被害が報告された。犯人は、まだ 近くにいるかもしれない。',
-          act3: '漁港の警戒が強まった。犯人はまだ見つからないが、もう周围は警戒している。'
+          act3: '漁港の警戒が強まった。犯人はまだ見つからないが、もう周囲は警戒している。'
         },
         guard: {
-          intro: '漁港の设备维护を探している。報酬は少ないが、地域にとっては 중요하다。',
+          intro: '漁港の設備保守を探している。報酬は少ないが、地域にとって重要だ。',
           introQuote: 'この设备が無くなれば、漁業が停滞する。何とかしたいんだ。',
           act2: '维护所需的材料が、少しずつ揃っている。もう少しで作業開始できる。',
           act3: '设备が修復された。漁港の作業が、少しだけ効率的になった。'
@@ -10330,10 +10333,10 @@ function uxRenderTodaySituation(){
     region: ' Unknown',
     firstMeet: 'まだ、この土地について何も知らない。でも、話し相手になってあげよう。',
     noIncident: 'この辺りは、今は静かだ。何かあれば、俺たちにも教えてくれ。',
-    successReturn: ' 무사히 돌아왔다. 고마워, 그 정보는 우리에게 중요하다.',
-    failureReturn: ' 어려웠겠다. 이 길은 녹록하지 않지. 그래도 돌아온 것만으로도 다행이야.',
-    revisitImproved: ' 당신이 오고 나서 뭔가 달라진 것 같다. 감사하다.',
-    revisitUnchanged: ' 아직 같은 모습이야. 그래도, 네가 여기 있다는 것만으로도 의미가 있어.',
+    successReturn: '無事に戻ったんだね。ありがとう。その情報は私たちにとって大切だ。',
+    failureReturn: '大変だったろう。この道は容易ではない。それでも無事に戻ってきてよかった。',
+    revisitImproved: 'あなたが来てから何かが変わった気がする。ありがとう。',
+    revisitUnchanged: 'まだ状況は変わらない。それでも、あなたがここにいることには意味がある。',
     chains: {
       merchant: {
         intro: '運びたい荷がある。この土地の事情に詳しい人を探している。',
@@ -10723,20 +10726,21 @@ const V7_CONSUMABLES=[
 {id:"v7_ration",name:"携行食",price:6,effect:"食料+2",food:2},
 {id:"v7_water",name:"浄水袋",price:5,effect:"水+2",water:2},
 {id:"v7_tonic",name:"気付け薬",price:12,effect:"疲労を4軽減",fatigue:4},
-{id:"v7_smoke",name:"煙幕筒",price:14,effect:"撤退判定を有利にする",escape:1},
+{id:"v7_smoke",name:"煙幕筒",price:14,effect:"次の戦闘撤退で疲労-6",escape:1},
 {id:"v7_oil",name:"研磨油",price:10,effect:"装備耐久を10回復",durability:10},
-{id:"v7_salt",name:"保存塩",price:7,effect:"食料の消耗を1日抑える",food:1},
+{id:"v7_salt",name:"保存塩",price:7,effect:"食料+1（携行食より少量補充）",food:1},
 {id:"v7_lure",name:"誘導餌",price:11,effect:"次の遭遇敵数を1減らす",enemy:-1}
 ];
 const V7_RECIPES=[
 {id:"v7_recipe_bandage",name:"止血包の調合",price:15,need:"薬草×2 → 止血包×2"},
-{id:"v7_recipe_ration",name:"保存食の加工",price:18,need:"食料×2 → 携行食×2"},
-{id:"v7_recipe_oil",name:"研磨油の精製",price:20,need:"くず素材×2 → 研磨油×2"},
+{id:"v7_recipe_ration",name:"保存食の加工",price:18,need:"獣皮×1・再利用材×1 → 携行食×2"},
+{id:"v7_recipe_oil",name:"研磨油の精製",price:20,need:"鉱石×1・再利用材×2 → 研磨油×2"},
 {id:"v7_recipe_smoke",name:"煙幕筒の製作",price:24,need:"くず素材×1・薬草×1 → 煙幕筒×1"}
 ];
 function v7EnsureSupply(){
  if(!S||typeof S!=="object")return;
  S.v7Supply=S.v7Supply&&typeof S.v7Supply==="object"?S.v7Supply:{weapons:{},items:{},recipes:{}};
+ for(const key of ["weapons","items","recipes"]){if(!S.v7Supply[key]||typeof S.v7Supply[key]!=="object"||Array.isArray(S.v7Supply[key]))S.v7Supply[key]={};}
  for(const x of V7_WEAPONS)S.v7Supply.weapons[x.id]=Math.max(0,Math.floor(Number(S.v7Supply.weapons[x.id])||0));
  for(const x of V7_CONSUMABLES)S.v7Supply.items[x.id]=Math.max(0,Math.floor(Number(S.v7Supply.items[x.id])||0));
  for(const x of V7_RECIPES)S.v7Supply.recipes[x.id]=!!S.v7Supply.recipes[x.id];
@@ -10792,6 +10796,8 @@ function v7EnsureContent(){
 function v7UseItem(id){
  v7EnsureContent();const item=V7_CONSUMABLES.find(x=>x.id===id);if(!item||S.v7Supply.items[id]<1){lg("所持していない。");return;}
  if(S.battle&&["v7_bandage","v7_ration","v7_water","v7_tonic","v7_oil","v7_salt"].includes(id)){lg("この品は戦闘中には使えない。戦闘外で補給・手当てを行ってください。");return;}
+ if(item.escape&&S.v7Content.nextEscapeBonus){lg("煙幕筒の撤退支援はすでに準備済み。");return;}
+ if(item.enemy&&S.v7Content.nextEnemyReduction){lg("誘導餌の効果は次の遭遇まで持続している。");return;}
  S.v7Supply.items[id]--;
  if(item.healInjury)S.res.injury=Math.max(0,(S.res.injury||0)-item.healInjury);
  if(item.food)S.res.food=Math.min(99,(S.res.food||0)+item.food);
@@ -10822,11 +10828,20 @@ const v7BeginExplore0=beginBattleFromExploration;
 beginBattleFromExploration=function(){v7BeginExplore0.apply(this,arguments);v7BattlePrep();render();};
 const v7BeginV6_0=v6StartBattle;
 v6StartBattle=function(){v7BeginV6_0.apply(this,arguments);v7BattlePrep();render();};
+// Apply the one-shot smoke effect to both the dedicated 8x3 retreat button and the generic return button.
+function v7ApplyRetreatSmoke(){
+ if(!S||!S.v7Content?.nextEscapeBonus||!S.res)return;
+ S.res.fatigue=Math.max(0,(Number(S.res.fatigue)||0)-6);
+ S.v7Content.nextEscapeBonus=0;lg("煙幕筒で撤退損耗を抑えた（疲労-6）。");render();
+}
+const v7Retreat0=v6RetreatBattle;
+v6RetreatBattle=function(){const retreat=!!S?.v6Battle;const result=v7Retreat0.apply(this,arguments);if(retreat&&!S.battle)v7ApplyRetreatSmoke();return result;};
 const v7Return0=returnTown;
 returnTown=function(){
- const retreat=!!S.battle,bonus=!!(S.v7Content&&S.v7Content.nextEscapeBonus);
- v7Return0.apply(this,arguments);
- if(retreat&&bonus&&S&&S.res){S.res.fatigue=Math.max(0,S.res.fatigue-6);S.v7Content.nextEscapeBonus=0;lg("煙幕筒で撤退損耗を抑えた（疲労-6）。");render();}
+ const retreat=!!S?.battle,bonus=!!S?.v7Content?.nextEscapeBonus;
+ const result=v7Return0.apply(this,arguments);
+ if(retreat&&bonus&&!S?.battle)v7ApplyRetreatSmoke();
+ return result;
 };
 function v7ContractsFor(region){
  const regions=Object.keys(REGION_PROFILE||{});const ix=Math.max(0,regions.indexOf(region));
@@ -10836,11 +10851,31 @@ function v7AcceptContract(id){
  v7EnsureContent();if(!S.away||S.battle){lg("地域へ出発し、戦闘外で依頼を受けてください。");return;}
  const a=S.v6Adventure,region=a?.region||S.world?.region,contract=v7ContractsFor(region).find(x=>x.id===id);
  if(!contract||S.v7Content.contracts[id]?.status==="closed"){lg("この依頼は受けられない。");return;}
- S.v7Content.contracts[id]={...contract,status:"active",acceptedDay:S.day,result:null};lg("【V7依頼】"+contract.title+"を受託。目標地点："+contract.goal+"。到達・戦闘・交渉などの実行後、依頼報告を選べる。");render();
+ if(S.v7Content.contracts[id]?.status==="active"){lg("この地域依頼は受注済み。");return;}
+ S.v7Content.contracts[id]={...contract,status:"active",acceptedDay:S.day,acceptedOutcomeCount:Array.isArray(a?.outcomes)?a.outcomes.length:0,acceptedPathLength:Array.isArray(a?.path)?a.path.length:0,result:null};lg("【V7依頼】"+contract.title+"を受託。目標地点："+contract.goal+"。受注後に目標に応じた実行結果が記録されると成功報告できる。");render();
 }
 function v7ResolveContract(id,result){
  v7EnsureContent();const q=S.v7Content.contracts[id];if(!q||q.status!=="active"||!S.away||S.battle){lg("報告できる状態ではない。");return;}
- const a=S.v6Adventure;if(!a||a.region!==q.region||!(a.visited?.[q.goal]||a.outcomes?.length)){lg("目標地点への到達または現地行動が必要。");return;}
+ const a=S.v6Adventure;
+ if(!a||!a.active||a.region!==q.region){lg("対象地域の遠征中でなければ報告できない。");return;}
+ if(!["success","partial","retreat"].includes(result)){lg("不正な依頼報告形式。");return;}
+ const fresh=(Array.isArray(a.outcomes)?a.outcomes:[]).slice(Math.max(0,Number(q.acceptedOutcomeCount)||0));
+ const evidence=fresh.filter(e=>e&&(!e.region||e.region===q.region));
+ const at=(type,node)=>evidence.some(e=>e.type===type&&(!node||e.node===node));
+ const verified=({
+   safe:()=>at("v7_local_event","safe"),
+   battle:()=>at("cleared","danger")||at("cleared","finale"),
+   spring:()=>at("gather","spring"),
+   lookout:()=>at("v7_observed","lookout"),
+   wild:()=>at("v7_local_event","wild"),
+   negotiate:()=>at("negotiated","danger")||at("negotiated","finale"),
+   gather:()=>at("gather")||evidence.some(e=>e.type==="v7_local_event"&&["safe","wild"].includes(e.node))
+ })[q.goal];
+ const goalDone=!!(verified&&verified());
+ const afterPath=(Array.isArray(a.path)?a.path:[]).slice(Math.max(0,Number(q.acceptedPathLength)||0));
+ const reachedGoal=afterPath.includes(q.goal)||(q.goal==="battle"||q.goal==="negotiate")&&afterPath.some(n=>["danger","finale"].includes(n));
+ if(result==="success"&&!goalDone){lg("目標に対応する行動・戦闘・調査の完了記録がないため成功報告できない。");return;}
+ if(result==="partial"&&!goalDone&&!reachedGoal){lg("目標地点に向けた活動記録がないため部分成功として報告できない。");return;}
  const w=(S.v6World=S.v6World||{})[q.region]||((S.v6World||{})[q.region]={security:0,access:0,trade:0,revisits:0});
  const ri=ensureRegionIntel(S,q.region);
  if(result==="success"){S.gold+=q.reward;w.security=cl((w.security||0)+4,-100,100);w.access=cl((w.access||0)+3,-100,100);ri.reputation=cl((ri.reputation||0)+2,-50,50);lg("【V7依頼成功】"+q.title+"：報酬+"+q.reward+"、治安・通行・地域信用が改善。");}
@@ -10854,7 +10889,7 @@ function v7RenderContent(){
  const region=S.v6Adventure?.region||S.world?.region||"未選択",away=!!S.away;
  const contracts=away?v7ContractsFor(region):[];
  const active=Object.values(S.v7Content.contracts).filter(q=>q.status==="active"&&q.region===region);
- host.innerHTML="<h2>V7 地域依頼・補給</h2><p class='s'>地域へ出た後、各地点に到達・戦闘・交渉した結果を依頼報告へ反映します。無関係な地域では達成できません。</p>"+
+ host.innerHTML="<h2>V7 地域依頼・補給</h2><p class='s'>地域へ出た後、受注後の地点調査・戦闘勝利・交渉など、依頼目標に一致する行動記録だけを成功報告へ反映します。</p>"+
  "<h3>消耗品を使う</h3><div class='row'>"+V7_CONSUMABLES.map(x=>"<button type='button' onclick='v7UseItem(\""+x.id+"\")'>"+x.name+"（"+S.v7Supply.items[x.id]+"）</button>").join("")+"</div>"+
  "<h3>習得済みレシピ</h3><div class='row'>"+V7_RECIPES.filter(x=>S.v7Supply.recipes[x.id]).map(x=>"<button type='button' onclick='v7Craft(\""+x.id+"\")'>製作："+x.name+"</button>").join("")+"</div>"+
  (away?"<h3>"+region+"の地域依頼</h3><div class='g'>"+contracts.map(q=>{const st=S.v7Content.contracts[q.id];return "<div class='u'><b>"+q.title+"</b><div class='s'>目標："+q.goal+"／"+q.desc+"／成功報酬"+q.reward+"G</div>"+(!st?"<button type='button' onclick='v7AcceptContract(\""+q.id+"\")'>受託</button>":st.status==="active"?"<div class='row'><button onclick='v7ResolveContract(\""+q.id+"\",\"success\")'>成功報告</button><button onclick='v7ResolveContract(\""+q.id+"\",\"partial\")'>部分成功</button><button onclick='v7ResolveContract(\""+q.id+"\",\"retreat\")'>撤退報告</button></div>":"<span class='s'>"+st.result+"済み</span>")+"</div>";}).join("")+"</div>":"<p class='s'>依頼は地域への出発後に表示されます。</p>");
