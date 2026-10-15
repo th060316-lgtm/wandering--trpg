@@ -10765,6 +10765,104 @@ const v7Render0=typeof render==="function"?render:null;
 if(typeof render==="function"){const v7RenderOriginal=render;render=function(){v7RenderOriginal.apply(this,arguments);v7RenderSupply();};}
 try{v7EnsureSupply();v7RenderSupply();}catch(e){console.warn("V7 P0 supply",e);}
 /* V7_P0_SUPPLY_BEGIN */_END
+
+/* V7_CONTENT_LOOP_BEGIN */
+const V7_CONTRACT_TEMPLATES=[
+["護送路の再調査","safe","安全な街道を確認し、物流回復の足掛かりを作る。"],
+["危険地帯の掃討","battle","危険地帯の敵対集団を退け、地域治安を改善する。"],
+["水場の確保","spring","水場を調べ、補給経路を再開する。"],
+["見張り台の観測","lookout","高所から経路と敵の動きを記録する。"],
+["野道の聞き込み","wild","危険な近道で現地情報を集める。"],
+["分岐路の交渉","negotiate","通行を妨げる相手と条件交渉を行う。"],
+["物資回収","gather","現地素材を回収し、次の遠征の準備を整える。"],
+["避難路の確認","safe","安全な退路を確認し、地域の再訪性を上げる。"],
+["地域連絡便","lookout","見張り台から隣接地への連絡手段を確保する。"],
+["被害跡の追跡","wild","危険な足跡を追い、原因を特定する。"],
+["関所の通行保証","negotiate","通行条件を整理し、物流への負担を下げる。"],
+["奥地の調査報告","battle","奥地で得た情報を持ち帰り、続きの依頼を解放する。"]
+];
+function v7EnsureContent(){
+ v7EnsureSupply();
+ S.v7Content=S.v7Content&&typeof S.v7Content==="object"?S.v7Content:{contracts:{},history:[],nextEscapeBonus:0,nextEnemyReduction:0};
+ S.v7Content.contracts=S.v7Content.contracts&&typeof S.v7Content.contracts==="object"?S.v7Content.contracts:{};
+ S.v7Content.history=Array.isArray(S.v7Content.history)?S.v7Content.history.slice(-80):[];
+ S.v7Content.nextEscapeBonus=Math.max(0,Math.min(1,Number(S.v7Content.nextEscapeBonus)||0));
+ S.v7Content.nextEnemyReduction=Math.max(0,Math.min(1,Number(S.v7Content.nextEnemyReduction)||0));
+}
+function v7UseItem(id){
+ v7EnsureContent();const item=V7_CONSUMABLES.find(x=>x.id===id);if(!item||S.v7Supply.items[id]<1){lg("所持していない。");return;}
+ if(S.battle&&["v7_bandage","v7_ration","v7_water","v7_tonic","v7_oil","v7_salt"].includes(id)){lg("この品は戦闘中には使えない。戦闘外で補給・手当てを行ってください。");return;}
+ S.v7Supply.items[id]--;
+ if(item.healInjury)S.res.injury=Math.max(0,(S.res.injury||0)-item.healInjury);
+ if(item.food)S.res.food=Math.min(99,(S.res.food||0)+item.food);
+ if(item.water)S.res.water=Math.min(99,(S.res.water||0)+item.water);
+ if(item.fatigue)S.res.fatigue=Math.max(0,(S.res.fatigue||0)-item.fatigue);
+ if(item.escape)S.v7Content.nextEscapeBonus=1;
+ if(item.enemy)S.v7Content.nextEnemyReduction=1;
+ if(item.durability){
+   const u=S.party.find(x=>x.weapon&&x.weapon.durability<x.weapon.maxDurability);
+   if(!u){S.v7Supply.items[id]++;lg("手入れが必要な装備がない。");return;}
+   u.weapon.durability=Math.min(u.weapon.maxDurability,u.weapon.durability+item.durability);syncActiveWeaponToArmory(u);
+ }
+ lg(item.name+"を使用："+item.effect);render();
+}
+function v7Craft(id){
+ v7EnsureContent();if(!S.v7Supply.recipes[id]){lg("このレシピは未習得。");return;}
+ const need={v7_recipe_bandage:{herb:2,out:"v7_bandage",n:2},v7_recipe_ration:{hide:1,scrap:1,out:"v7_ration",n:2},v7_recipe_oil:{ore:1,scrap:2,out:"v7_oil",n:2},v7_recipe_smoke:{herb:1,scrap:1,out:"v7_smoke",n:1}}[id];
+ if(!need||Object.entries(need).some(([k,v])=>k!=="out"&&k!=="n"&&(S.materials[k]||0)<v)){lg("素材不足。");return;}
+ for(const [k,v] of Object.entries(need))if(k!=="out"&&k!=="n")S.materials[k]-=v;
+ S.v7Supply.items[need.out]=(S.v7Supply.items[need.out]||0)+need.n;lg("製作："+V7_CONSUMABLES.find(x=>x.id===need.out).name+" ×"+need.n);render();
+}
+function v7BattlePrep(){
+ v7EnsureContent();if(S.v7Content.nextEnemyReduction&&S.en&&S.en.length>1){
+   S.en.pop();S.v7Content.nextEnemyReduction=0;lg("誘導餌により敵の一部が逸れ、敵数が1減った。");
+ }
+}
+const v7BeginExplore0=beginBattleFromExploration;
+beginBattleFromExploration=function(){v7BeginExplore0.apply(this,arguments);v7BattlePrep();render();};
+const v7BeginV6_0=v6StartBattle;
+v6StartBattle=function(){v7BeginV6_0.apply(this,arguments);v7BattlePrep();render();};
+const v7Return0=returnTown;
+returnTown=function(){
+ const retreat=!!S.battle,bonus=!!(S.v7Content&&S.v7Content.nextEscapeBonus);
+ v7Return0.apply(this,arguments);
+ if(retreat&&bonus&&S&&S.res){S.res.fatigue=Math.max(0,S.res.fatigue-6);S.v7Content.nextEscapeBonus=0;lg("煙幕筒で撤退損耗を抑えた（疲労-6）。");render();}
+};
+function v7ContractsFor(region){
+ const regions=Object.keys(REGION_PROFILE||{});const ix=Math.max(0,regions.indexOf(region));
+ return V7_CONTRACT_TEMPLATES.filter((_,i)=>i%regions.length===ix||i>=9&&i-9===ix).map((x,i)=>({id:"v7c_"+ix+"_"+i,region,title:x[0],goal:x[1],desc:x[2],reward:16+i*3}));
+}
+function v7AcceptContract(id){
+ v7EnsureContent();if(!S.away||S.battle){lg("地域へ出発し、戦闘外で依頼を受けてください。");return;}
+ const a=S.v6Adventure,region=a?.region||S.world?.region,contract=v7ContractsFor(region).find(x=>x.id===id);
+ if(!contract||S.v7Content.contracts[id]?.status==="closed"){lg("この依頼は受けられない。");return;}
+ S.v7Content.contracts[id]={...contract,status:"active",acceptedDay:S.day,result:null};lg("【V7依頼】"+contract.title+"を受託。目標地点："+contract.goal+"。到達・戦闘・交渉などの実行後、依頼報告を選べる。");render();
+}
+function v7ResolveContract(id,result){
+ v7EnsureContent();const q=S.v7Content.contracts[id];if(!q||q.status!=="active"||!S.away||S.battle){lg("報告できる状態ではない。");return;}
+ const a=S.v6Adventure;if(!a||a.region!==q.region||!(a.visited?.[q.goal]||a.outcomes?.length)){lg("目標地点への到達または現地行動が必要。");return;}
+ const w=(S.v6World=S.v6World||{})[q.region]||((S.v6World||{})[q.region]={security:0,access:0,trade:0,revisits:0});
+ const ri=ensureRegionIntel(S,q.region);
+ if(result==="success"){S.gold+=q.reward;w.security=cl((w.security||0)+4,-100,100);w.access=cl((w.access||0)+3,-100,100);ri.reputation=cl((ri.reputation||0)+2,-50,50);lg("【V7依頼成功】"+q.title+"：報酬+"+q.reward+"、治安・通行・地域信用が改善。");}
+ else if(result==="partial"){S.gold+=Math.floor(q.reward/2);w.access=cl((w.access||0)+2,-100,100);ri.reputation=cl((ri.reputation||0)+1,-50,50);lg("【V7依頼部分成功】"+q.title+"：報酬半額、通行のみ改善。");}
+ else {w.security=cl((w.security||0)-2,-100,100);lg("【V7依頼撤退】"+q.title+"：報酬なし、地域警戒が悪化。");}
+ q.status="closed";q.result=result;q.closedDay=S.day;S.v7Content.history.push({id:q.id,region:q.region,title:q.title,result,day:S.day});S.v7Content.history=S.v7Content.history.slice(-80);render();
+}
+function v7RenderContent(){
+ if(!S)return;v7EnsureContent();
+ let host=document.getElementById("v7ContentPanel");if(!host){host=document.createElement("section");host.id="v7ContentPanel";host.className="c";const root=document.getElementById("f1Pane_adv")||document.getElementById("f1Pane_hub");if(!root)return;root.appendChild(host);}
+ const region=S.v6Adventure?.region||S.world?.region||"未選択",away=!!S.away;
+ const contracts=away?v7ContractsFor(region):[];
+ const active=Object.values(S.v7Content.contracts).filter(q=>q.status==="active"&&q.region===region);
+ host.innerHTML="<h2>V7 地域依頼・補給</h2><p class='s'>地域へ出た後、各地点に到達・戦闘・交渉した結果を依頼報告へ反映します。無関係な地域では達成できません。</p>"+
+ "<h3>消耗品を使う</h3><div class='row'>"+V7_CONSUMABLES.map(x=>"<button type='button' onclick='v7UseItem(\""+x.id+"\")'>"+x.name+"（"+S.v7Supply.items[x.id]+"）</button>").join("")+"</div>"+
+ "<h3>習得済みレシピ</h3><div class='row'>"+V7_RECIPES.filter(x=>S.v7Supply.recipes[x.id]).map(x=>"<button type='button' onclick='v7Craft(\""+x.id+"\")'>製作："+x.name+"</button>").join("")+"</div>"+
+ (away?"<h3>"+region+"の地域依頼</h3><div class='g'>"+contracts.map(q=>{const st=S.v7Content.contracts[q.id];return "<div class='u'><b>"+q.title+"</b><div class='s'>目標："+q.goal+"／"+q.desc+"／成功報酬"+q.reward+"G</div>"+(!st?"<button type='button' onclick='v7AcceptContract(\""+q.id+"\")'>受託</button>":st.status==="active"?"<div class='row'><button onclick='v7ResolveContract(\""+q.id+"\",\"success\")'>成功報告</button><button onclick='v7ResolveContract(\""+q.id+"\",\"partial\")'>部分成功</button><button onclick='v7ResolveContract(\""+q.id+"\",\"retreat\")'>撤退報告</button></div>":"<span class='s'>"+st.result+"済み</span>")+"</div>";}).join("")+"</div>":"<p class='s'>依頼は地域への出発後に表示されます。</p>");
+}
+const v7RenderContent0=render;
+render=function(){v7RenderContent0.apply(this,arguments);v7RenderContent();};
+try{v7EnsureContent();v7RenderContent();}catch(e){console.warn("V7 content loop",e);}
+/* V7_CONTENT_LOOP_BEGIN */_END
 </script>
 </body>
 </html>
