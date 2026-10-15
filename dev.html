@@ -7119,6 +7119,7 @@ function migrateSave(input){
   next.uxFieldTalkDay=num(next.uxFieldTalkDay,0,0);
   next.uxLifeEventsInterrupted=num(next.uxLifeEventsInterrupted,0,0,100000);
   v6NormalizeSave(next);
+  v7NormalizeSaveState(next);
   return next;
 }
 function saveCandidateList(){
@@ -9079,29 +9080,84 @@ const V6_REGION_STYLE={
 const V6_PLACE_FALLBACK=['外れ道','古い橋','見晴らし丘','崩れた遺構'];
 function v6Esc(x){return v17EscapeHtml(String(x==null?'':x));}
 function v6Style(region){return V6_REGION_STYLE[region]||V6_REGION_STYLE['灰風平原'];}
+/* V7 regional route topology: distinct choices, all sites reachable, no unavoidable combat. */
+const V7_ROUTE_VARIANTS={
+ '灰風平原':{fork:['safe','wild','lookout','landmark','arrival'],safe:['spring','danger','fork'],wild:['danger','landmark','fork'],lookout:['finale','fork'],spring:['finale','safe'],danger:['finale','fork'],landmark:['wild','spring','fork'],finale:['arrival','fork']},
+ '碧森辺境':{fork:['wild','safe','lookout','arrival'],safe:['spring','landmark','fork'],wild:['landmark','danger','fork'],lookout:['spring','fork'],spring:['finale','wild','safe'],danger:['finale','wild'],landmark:['lookout','danger','wild'],finale:['arrival','spring']},
+ '赤土丘陵':{fork:['safe','landmark','wild','arrival'],safe:['danger','spring','fork'],wild:['lookout','danger','fork'],lookout:['finale','wild'],spring:['lookout','safe'],danger:['finale','safe'],landmark:['lookout','spring','fork'],finale:['arrival','lookout']},
+ 'セラ川下流湿地':{fork:['safe','spring','wild','arrival'],safe:['spring','lookout','fork'],wild:['landmark','danger','fork'],lookout:['finale','safe'],spring:['landmark','safe','fork'],danger:['finale','wild'],landmark:['lookout','danger','spring'],finale:['arrival','lookout']},
+ 'ベルク北峠旧軍道':{fork:['lookout','safe','wild','arrival'],safe:['landmark','spring','fork'],wild:['danger','landmark','fork'],lookout:['finale','safe','fork'],spring:['lookout','safe'],danger:['finale','wild'],landmark:['danger','spring','safe'],finale:['arrival','lookout']},
+ '東部採石路':{fork:['safe','landmark','wild','arrival'],safe:['lookout','danger','fork'],wild:['spring','landmark','fork'],lookout:['finale','safe'],spring:['finale','wild'],danger:['finale','safe'],landmark:['lookout','spring','fork'],finale:['arrival','spring']},
+ '風車牧野':{fork:['safe','wild','landmark','arrival'],safe:['spring','lookout','fork'],wild:['landmark','spring','fork'],lookout:['finale','safe'],spring:['finale','safe','wild'],danger:['finale','landmark'],landmark:['danger','lookout','fork'],finale:['arrival','spring']},
+ '南湖干潟':{fork:['spring','safe','wild','arrival'],safe:['lookout','landmark','fork'],wild:['danger','spring','fork'],lookout:['finale','safe'],spring:['landmark','wild','fork'],danger:['finale','wild'],landmark:['lookout','spring','safe'],finale:['arrival','lookout']},
+ '街道宿場跡':{fork:['landmark','safe','lookout','arrival'],safe:['spring','wild','fork'],wild:['danger','lookout','safe'],lookout:['finale','fork'],spring:['finale','safe'],danger:['finale','wild'],landmark:['danger','spring','fork'],finale:['arrival','lookout']}
+};
+const V7_REGION_LANDMARKS={
+ '灰風平原':{name:'風車測量台',desc:'風向きと街道の曲がりを測り、見張りの死角を読む。',effect:'intel',detail:'警戒-12'},
+ '碧森辺境':{name:'根道の薬草地',desc:'深い樹根の下に生える薬草を探し、採取制限を守る。',effect:'herb',detail:'薬草+2'},
+ '赤土丘陵':{name:'露頭の採掘跡',desc:'崩れかけた赤土の斜面で鉱石を拾う。',effect:'ore',detail:'鉱石+2／疲労+4'},
+ 'セラ川下流湿地':{name:'渡し場の共同井戸',desc:'水位を確かめ、腐敗していない水だけを補給する。',effect:'water',detail:'水+4'},
+ 'ベルク北峠旧軍道':{name:'狼煙台の記録庫',desc:'凍えながら旧軍道の通行記録を調べる。',effect:'access',detail:'地域通行+3／疲労+5'},
+ '東部採石路':{name:'廃坑の工具置場',desc:'荷車の下から使える金具を探し出す。',effect:'scrap',detail:'再利用材+2'},
+ '風車牧野':{name:'古い牧柵の避風地',desc:'羊飼いの残した囲いで休み、荷役動物の動線を読む。',effect:'rest',detail:'疲労-22'},
+ '南湖干潟':{name:'潮待ち漁師小屋',desc:'潮の満ち引きを聞き、湖畔の交易路を確かめる。',effect:'trade',detail:'地域交易+3／水+1'},
+ '街道宿場跡':{name:'廃宿の革細工場',desc:'朽ちた作業台から革素材を取り戻す。',effect:'hide',detail:'獣皮+2'}
+};
+function v6AppendOutcome(a,rec){
+ if(!a||!rec)return;
+ a.outcomes=Array.isArray(a.outcomes)?a.outcomes:[];
+ a.outcomeSerial=Math.max(0,Math.floor(Number(a.outcomeSerial)||0))+1;
+ a.outcomes.push({...rec,serial:a.outcomeSerial});
+ if(a.outcomes.length>30)a.outcomes=a.outcomes.slice(-30);
+}
+function v7LandmarkAction(choice){
+ const a=S?.v6Adventure;if(!a?.active||S.battle||a.at!=='landmark'||a.resolved?.v7_landmark)return;
+ const l=V7_REGION_LANDMARKS[a.region];if(!l)return;
+ if(choice==='pass'){a.resolved.v7_landmark='passed';lg('「'+l.name+'」は調べずに進む。');render();return;}
+ if(choice!=='investigate'||!v6PayMove(l.name+'の探索'))return;
+ if(['herb','ore','scrap','hide'].includes(l.effect)){S.materials=S.materials||{};S.materials[l.effect]=(Number(S.materials[l.effect])||0)+2;}
+ else if(l.effect==='intel')a.alert=cl(a.alert-12,0,100);
+ else if(l.effect==='water')S.res.water=(Number(S.res.water)||0)+4;
+ else if(l.effect==='rest')S.res.fatigue=cl(S.res.fatigue-22,0,100);
+ else if(l.effect==='access'||l.effect==='trade'){
+  S.v6World=S.v6World||{};const w=S.v6World[a.region]||(S.v6World[a.region]={security:0,access:0,trade:0,revisits:0});
+  w[l.effect]=cl((Number(w[l.effect])||0)+3,-100,100);
+  if(l.effect==='trade')S.res.water=(Number(S.res.water)||0)+1;
+ }
+ if(l.effect==='ore')S.res.fatigue=cl(S.res.fatigue+4,0,100);
+ if(l.effect==='access')S.res.fatigue=cl(S.res.fatigue+5,0,100);
+ a.resolved.v7_landmark='investigated';v6AppendOutcome(a,{day:S.day,type:'v7_landmark',node:'landmark',region:a.region,effect:l.effect});
+ lg('「'+l.name+'」を調査：'+l.detail+'。一日と物資を消費。');render();
+}
 function v6Graph(region){
   const p=(regionProfile(region).places||V6_PLACE_FALLBACK).slice();while(p.length<4)p.push(V6_PLACE_FALLBACK[p.length]);
+  const r=V7_ROUTE_VARIANTS[region]||V7_ROUTE_VARIANTS['灰風平原'];
+  const landmark=V7_REGION_LANDMARKS[region]||V7_REGION_LANDMARKS['灰風平原'];
   return {
     arrival:{title:region+'の入口',kind:'arrival',desc:'土地の匂いと人の流れを確かめる。ここから進路を選べる。',exits:['fork']},
-    fork:{title:p[0]+'の分かれ道',kind:'fork',desc:'安全な街道、険しい近道、情報を得られる高所へ道が分かれる。',exits:['safe','wild','lookout','arrival']},
-    safe:{title:p[1],kind:'bridge',desc:'遠回りだが足場はよい。商人の痕跡が残る。',exits:['spring','danger','fork']},
-    wild:{title:p[2],kind:'forest',desc:'距離は短いが獣道と伏兵の気配がある。',exits:['danger','spring','fork']},
-    lookout:{title:'見晴らしの'+p[0],kind:'tower',desc:'地域の道と危険を観察できる。依頼や再訪の判断材料になる。',exits:['finale','fork']},
-    spring:{title:'旅人の休み場',kind:'spring',desc:'補給の跡と土地の人の伝言がある。採取か聞き込みができる。',exits:['finale','safe','wild']},
-    danger:{title:p[3]+'の危険地帯',kind:'danger',desc:'敵集団が道を塞いでいる。戦闘・交渉・代価付き迂回を選ぶ。',exits:['finale','fork'],hazard:true},
-    finale:{title:region+'の奥地',kind:'finale',desc:'ここで得た結果は依頼、住人、地域状態、次の再訪へ残る。',exits:['arrival','fork'],hazard:true}
+    fork:{title:p[0]+'の分かれ道',kind:'fork',desc:'安全な街道、険しい近道、情報を得られる高所へ道が分かれる。',exits:r.fork},
+    safe:{title:p[1],kind:'bridge',desc:'遠回りだが足場はよい。商人の痕跡が残る。',exits:r.safe},
+    wild:{title:p[2],kind:'forest',desc:'距離は短いが獣道と伏兵の気配がある。',exits:r.wild},
+    lookout:{title:'見晴らしの'+p[0],kind:'tower',desc:'地域の道と危険を観察できる。依頼や再訪の判断材料になる。',exits:r.lookout},
+    spring:{title:'旅人の休み場',kind:'spring',desc:'補給の跡と土地の人の伝言がある。採取か聞き込みができる。',exits:r.spring},
+    danger:{title:p[3]+'の危険地帯',kind:'danger',desc:'敵集団が道を塞いでいる。戦闘・交渉・代価付き迂回を選ぶ。',exits:r.danger,hazard:true},
+    landmark:{title:landmark.name,kind:'landmark',desc:landmark.desc,exits:r.landmark},
+    finale:{title:region+'の奥地',kind:'finale',desc:'ここで得た結果は依頼、住人、地域状態、次の再訪へ残る。',exits:r.finale,hazard:true}
   };
 }
 function v6DefaultAdventure(region){
-  return {version:1,active:true,region:region,at:'arrival',previous:null,path:['arrival'],visited:{arrival:1},resolved:{},outcomes:[],alert:0,selectedUnitId:null,ending:null,
+  return {version:2,active:true,region:region,at:'arrival',previous:null,path:['arrival'],visited:{arrival:1},resolved:{},outcomes:[],outcomeSerial:0,alert:0,selectedUnitId:null,ending:null,
     contract:S.quest?{title:S.quest.title||questTitle(S.quest),type:S.quest.type,region:region,enemyGroup:S.quest.mon||null,place:S.quest.place||null}:null};
 }
 function v6NormalizeSave(state){
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,Math.floor(Number(n)||0)));
   if(state.v6Adventure&&typeof state.v6Adventure==='object'&&REGION_PROFILE[state.v6Adventure.region]){
-    const a=state.v6Adventure,g=v6Graph(a.region);a.version=1;a.active=!!a.active;a.at=g[a.at]?a.at:'arrival';a.previous=g[a.previous]?a.previous:null;
+    const a=state.v6Adventure,g=v6Graph(a.region);a.version=2;a.active=!!a.active;a.at=g[a.at]?a.at:'arrival';a.previous=g[a.previous]?a.previous:null;
     a.path=Array.isArray(a.path)?a.path.filter(x=>g[x]).slice(-40):[a.at];a.visited=a.visited&&typeof a.visited==='object'?a.visited:{};
-    a.resolved=a.resolved&&typeof a.resolved==='object'?a.resolved:{};a.outcomes=Array.isArray(a.outcomes)?a.outcomes.slice(-30):[];a.alert=clamp(a.alert,0,100);
+    a.resolved=a.resolved&&typeof a.resolved==='object'&&!Array.isArray(a.resolved)?a.resolved:{};
+    a.outcomes=Array.isArray(a.outcomes)?a.outcomes.filter(x=>x&&typeof x==='object').slice(-30):[];
+    let serial=0;for(const rec of a.outcomes){const n=Number(rec.serial);serial=Number.isSafeInteger(n)&&n>serial?n:serial+1;rec.serial=serial;}
+    a.outcomeSerial=Math.max(serial,clamp(a.outcomeSerial,0,1e9));a.alert=clamp(a.alert,0,100);
   }else state.v6Adventure=null;
   if(state.v6Battle&&state.v6Battle.active){
     const b=state.v6Battle;b.version=1;b.active=true;b.turn=clamp(b.turn||1,1,9999);
@@ -9129,7 +9185,7 @@ function v6MoveNode(to){
   if(!node||!node.exits.includes(to)){lg('その方向へは進めない。');return;}if(node.hazard&&!a.resolved[a.at]){lg('危険を未解決のまま通過できない。戦闘・交渉・迂回を選んでください。');return;}
   if(!v6PayMove(g[to].title+'への移動'))return;a.previous=a.at;a.at=to;a.path.push(to);a.visited[to]=(a.visited[to]||0)+1;if(g[to].hazard&&!a.resolved[to])a.alert=cl(a.alert+8,0,100);
   lg(g[to].title+'へ進んだ。食料・水・時間・疲労を消費。'); if(to==='lookout'){
-   a.outcomes.push({day:S.day,type:'v7_observed',node:'lookout',region:a.region});a.outcomes=a.outcomes.slice(-30);
+   v6AppendOutcome(a,{day:S.day,type:'v7_observed',node:'lookout',region:a.region});
    v6ResolveObjective('survey');
  }if(to==='spring')v6ResolveObjective('gather');render();
 }
@@ -9181,15 +9237,14 @@ function v7LocalEventAction(choice){
   }else if(e.effect==='intel'){a.alert=cl(a.alert-9,0,100);reward='敵警戒を9低下';}
   else if(e.effect==='water'){S.res.water=(Number(S.res.water)||0)+2;reward='水を2補給';}
   else if(e.effect==='rest'){S.res.fatigue=cl(S.res.fatigue-19,0,100);reward='疲労を19軽減';}
-  a.resolved[key]='investigated';a.outcomes.push({day:S.day,type:'v7_local_event',event:e.title,node:a.at,region:a.region});
-  a.outcomes=a.outcomes.slice(-30);
+  a.resolved[key]='investigated';v6AppendOutcome(a,{day:S.day,type:'v7_local_event',event:e.title,node:a.at,region:a.region});
   lg('「'+e.title+'」を調査。'+reward+'。時間・食料・水を消費した。');render();
 }
 function v6LocalAction(kind){
   const a=S.v6Adventure;if(!a||S.battle)return;
-  if(kind==='talk'){if(!v6PayMove('聞き込み'))return;a.alert=cl(a.alert-4,0,100);a.outcomes.push({day:S.day,type:'talk',node:a.at});lg('土地の住人から危険と迂回路を聞いた。敵警戒が少し下がった。');}
-  else if(kind==='gather'){if(!v6PayMove('採取'))return;S.materials=S.materials||{};S.materials.herb=(S.materials.herb||0)+1;a.outcomes.push({day:S.day,type:'gather',node:a.at});v6ResolveObjective('gather');lg('薬草を1つ採取した。');}
-  else if(kind==='rest'){if(!v6CanPayMove()){lg('野営用の食料と水が足りない。強行帰還は可能。');return;}v6PayMove('野営');S.res.fatigue=cl(S.res.fatigue-18,0,100);living(S.party).forEach(u=>u.hp=Math.min(u.maxHp,u.hp+3));a.outcomes.push({day:S.day,type:'rest',node:a.at});lg('物資を消費して野営した。');}
+  if(kind==='talk'){if(!v6PayMove('聞き込み'))return;a.alert=cl(a.alert-4,0,100);v6AppendOutcome(a,{day:S.day,type:'talk',node:a.at,region:a.region});lg('土地の住人から危険と迂回路を聞いた。敵警戒が少し下がった。');}
+  else if(kind==='gather'){if(!v6PayMove('採取'))return;S.materials=S.materials||{};S.materials.herb=(S.materials.herb||0)+1;v6AppendOutcome(a,{day:S.day,type:'gather',node:a.at,region:a.region});v6ResolveObjective('gather');lg('薬草を1つ採取した。');}
+  else if(kind==='rest'){if(!v6CanPayMove()){lg('野営用の食料と水が足りない。強行帰還は可能。');return;}v6PayMove('野営');S.res.fatigue=cl(S.res.fatigue-18,0,100);living(S.party).forEach(u=>u.hp=Math.min(u.maxHp,u.hp+3));v6AppendOutcome(a,{day:S.day,type:'rest',node:a.at,region:a.region});lg('物資を消費して野営した。');}
   render();
 }
 function v6ResolveHazard(method){
@@ -9199,7 +9254,7 @@ function v6ResolveHazard(method){
   S.res.food-=need;S.res.water-=n;S.day+=2;S.res.fatigue=cl(S.res.fatigue+12,0,100);a.resolved[a.at]='avoided';a.alert=cl(a.alert+5,0,100);v6ApplyOutcome('avoided');lg('危険地帯を大きく迂回。2日と物資を失い、敵警戒が残った。報酬・討伐達成なし。');render();
 }
 function v6ApplyOutcome(type){
-  const a=S.v6Adventure;if(!a)return;const rec={day:S.day,type:type,node:a.at,region:a.region};a.outcomes.push(rec);a.outcomes=a.outcomes.slice(-30);S.v6World=S.v6World&&typeof S.v6World==='object'?S.v6World:{};
+  const a=S.v6Adventure;if(!a)return;const rec={day:S.day,type:type,node:a.at,region:a.region};v6AppendOutcome(a,rec);S.v6World=S.v6World&&typeof S.v6World==='object'?S.v6World:{};
   const w=S.v6World[a.region]||(S.v6World[a.region]={security:0,access:0,trade:0,lastOutcome:null,revisits:0});
   if(type==='cleared'){w.security=cl(w.security+6,-100,100);w.access=cl(w.access+4,-100,100);w.trade=cl(w.trade+2,-100,100);}if(type==='negotiated'){w.access=cl(w.access+3,-100,100);w.trade=cl(w.trade+2,-100,100);}
   if(type==='avoided'){w.security=cl(w.security-2,-100,100);w.access=cl(w.access-1,-100,100);}if(type==='surveyed')w.access=cl(w.access+3,-100,100);if(type==='gathered')w.trade=cl(w.trade+2,-100,100);w.lastOutcome=rec;
@@ -9226,13 +9281,14 @@ function v6RenderAdventure(){
   let hazard='';if(n.hazard&&!a.resolved[a.at])hazard='<div class="v6-route-actions"><button class="primary" onclick="v6ResolveHazard(\'fight\')">戦闘で道を開く</button><button onclick="v6ResolveHazard(\'negotiate\')">交渉する</button><button onclick="v6ResolveHazard(\'avoid\')">大きく迂回する</button></div>';
   const v7event=V7_LOCAL_EVENTS[a.region]?.[a.at],v7done=a.resolved['v7_event_'+a.at];
   const v7eventPanel=v7event&&!v7done?'<div class="hq-secondary"><h3>'+v6Esc(v7event.title)+'</h3><p>'+v6Esc(v7event.text)+'</p><div class="v6-route-actions"><button onclick="v7LocalEventAction(\'investigate\')">物資と一日を使って調べる</button><button onclick="v7LocalEventAction(\'pass\')">調べず進む</button></div></div>':'';
+  const landmark=V7_REGION_LANDMARKS[a.region],landmarkPanel=a.at==='landmark'&&!a.resolved.v7_landmark&&landmark?'<div class="hq-secondary"><h3>'+v6Esc(landmark.name)+'</h3><p>'+v6Esc(landmark.desc)+'</p><p class="s">'+v6Esc(landmark.detail)+'</p><div class="v6-route-actions"><button onclick="v7LandmarkAction(\'investigate\')">一日・物資を使って調べる</button><button onclick="v7LandmarkAction(\'pass\')">立ち寄らずに進む</button></div></div>':'';
   const local=(a.at==='spring'||a.at==='arrival')?'<div class="v6-route-actions"><button onclick="v6LocalAction(\'talk\')">土地の人に聞く</button><button onclick="v6LocalAction(\'gather\')">採取する</button><button onclick="v6LocalAction(\'rest\')">野営する</button></div>':'';
   const status='食料 '+S.res.food+'／水 '+S.res.water+'／疲労 '+S.res.fatigue+'/100／敵警戒 '+a.alert+(w?'｜地域変化 治安'+w.security+' 通行'+w.access+' 交易'+w.trade:'');
   const unitCost=Math.max(1,living(S.party).length);const moveTip='1地点移動：食料'+unitCost+'・水'+unitCost+'・1日・疲労+5。街へ帰る場合は帰還費用と未達成依頼に注意。';
   const optionalActions=(Array.isArray(a.path)&&a.path.length>1?'<button onclick="v6Back()">← 来た道を引き返す</button>':'')+'<button onclick="v6EmergencyReturn()">街へ帰還'+(v6CanPayMove()?'':'（強行・負傷あり）')+'</button>';
   const forward=(n.exits||[]).map(to=>'<button onclick="v6MoveNode(\''+to+'\')">→ '+v6Esc(g[to].title)+'</button>').join('');
   const needsDecision=n.hazard&&!a.resolved[a.at];
-  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+v7eventPanel+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
+  const html='<section class="c" id="v6AdventurePanel"><div class="ux-eyebrow">'+v6Esc(a.region)+' — 分岐探索</div><h2>'+v6Esc(n.title)+'</h2><div class="v6-scene">'+v6SceneSvg(n.kind,a.region)+'<div class="v6-scene-caption">'+v6Esc(n.desc)+'</div></div><p class="s">'+v6Esc(status)+'</p><p class="hq-cost">'+v6Esc(moveTip)+'</p>'+(needsDecision?'<h3>今、どう突破する？</h3>':'<h3>次に進む道を選ぶ</h3>')+hazard+(needsDecision?'':'<div class="v6-route-actions">'+forward+'</div>')+v7eventPanel+landmarkPanel+(local?'<details class="hq-secondary"><summary>この地点での追加行動</summary>'+local+'</details>':'')+'<details class="hq-secondary"><summary>引き返す・街へ帰る</summary><div class="v6-route-actions">'+optionalActions+'</div><p class="s">依頼を完了せずに帰ると報酬は受け取れません。</p></details></section>';
   if(panel)panel.outerHTML=html;else if(host)host.insertAdjacentHTML('afterend',html);const legacy=document.getElementById('uxExploreCard');if(legacy)legacy.hidden=true;
 }
 
@@ -9394,7 +9450,7 @@ function v6BattleVictory(){
 }
 function v6BattleDefeat(){
   if(!S.v6Battle||S.v6Battle.defeatApplied)return;S.v6Battle.defeatApplied=true;uxApplyTotalLoss();S.res.injury=cl(S.res.injury+12,0,100);S.party.forEach(u=>{u.hp=u.hero?1:0;});if(S.quest)S.quest.done=0;
-  S.v6Adventure.ending='defeat';S.v6Adventure.outcomes.push({day:S.day,type:'defeat',node:S.v6Adventure.at});S.battle=false;S.en=[];S.v6Battle=null;S.phase='field';lg('全員戦闘不能。正式敗北として携行資産を失った。主人公だけのKOとは区別される。');render();
+  S.v6Adventure.ending='defeat';v6AppendOutcome(S.v6Adventure,{day:S.day,type:'defeat',node:S.v6Adventure.at,region:S.v6Adventure.region});S.battle=false;S.en=[];S.v6Battle=null;S.phase='field';lg('全員戦闘不能。正式敗北として携行資産を失った。主人公だけのKOとは区別される。');render();
 }
 function v6RetreatBattle(){
   if(!S.v6Battle)return;const a=S.v6Adventure;a.resolved[a.at]='retreated';a.ending='retreat';a.alert=cl(a.alert+10,0,100);S.day++;S.res.fatigue=cl(S.res.fatigue+12,0,100);if(S.res.food>0)S.res.food--;if(S.quest)S.quest.done=0;
@@ -10771,6 +10827,46 @@ try{v7EnsureSupply();v7RenderSupply();}catch(e){console.warn("V7 P0 supply",e);}
 /* V7_P0_SUPPLY_END */
 
 /* V7_CONTENT_LOOP_BEGIN */
+/* V7 QA: compatibility migration that never reads/writes the global live state. */
+function v7NormalizeSaveState(state){
+ const isMap=o=>o&&typeof o==='object'&&!Array.isArray(o);
+ const sup=isMap(state.v7Supply)?state.v7Supply:{};
+ for(const k of ['weapons','items','recipes'])if(!isMap(sup[k]))sup[k]={};
+ for(const x of V7_WEAPONS)sup.weapons[x.id]=Math.max(0,Math.min(9999,Math.floor(Number(sup.weapons[x.id])||0)));
+ for(const x of V7_CONSUMABLES)sup.items[x.id]=Math.max(0,Math.min(9999,Math.floor(Number(sup.items[x.id])||0)));
+ for(const x of V7_RECIPES)sup.recipes[x.id]=!!sup.recipes[x.id];
+ state.v7Supply=sup;
+ const c=isMap(state.v7Content)?state.v7Content:{};
+ c.contracts=isMap(c.contracts)?c.contracts:{};
+ c.history=Array.isArray(c.history)?c.history.filter(x=>isMap(x)).slice(-80):[];
+ c.nextEscapeBonus=Math.max(0,Math.min(1,Math.floor(Number(c.nextEscapeBonus)||0)));
+ c.nextEnemyReduction=Math.max(0,Math.min(1,Math.floor(Number(c.nextEnemyReduction)||0)));
+ const a=state.v6Adventure;
+ for(const [id,q] of Object.entries(c.contracts)){
+  if(!isMap(q)||!['active','closed'].includes(q.status)||typeof q.region!=='string'||!REGION_PROFILE[q.region]){delete c.contracts[id];continue;}
+  if(q.status!=='active')continue;
+  // Old QA-patch Saves use array offsets (which wrap when the event log is capped).
+  // Upgrade known offsets when possible; otherwise require new proof while keeping contract active.
+  if(!Number.isSafeInteger(q.acceptedSerial)||q.acceptedSerial<0){
+   const events=a&&a.region===q.region&&Array.isArray(a.outcomes)?a.outcomes:[];
+   const count=Number(q.acceptedOutcomeCount);
+   q.acceptedSerial=Number.isSafeInteger(count)&&count>=0&&count<=events.length
+    ?(count===0?0:events[count-1].serial)
+    :(a&&a.region===q.region?a.outcomeSerial||0:0);
+   q.evidenceMigrated=true;
+  }
+  if(!Number.isSafeInteger(q.acceptedVisitedGoal)||q.acceptedVisitedGoal<0)
+    q.acceptedVisitedGoal=a&&a.region===q.region?Math.max(0,Number(a.visited?.[q.goal])||0):0;
+  if(!Number.isSafeInteger(q.acceptedVisitedDanger)||q.acceptedVisitedDanger<0)
+    q.acceptedVisitedDanger=a&&a.region===q.region?Math.max(0,Number(a.visited?.danger)||0):0;
+  if(!Number.isSafeInteger(q.acceptedVisitedFinale)||q.acceptedVisitedFinale<0)
+    q.acceptedVisitedFinale=a&&a.region===q.region?Math.max(0,Number(a.visited?.finale)||0):0;
+ }
+ // Inconsistent field Saves may contain an inactive adventure despite being away.
+ if(a&&state.away===true&&!state.battle&&state.phase==='field'&&a.active===false){a.active=true;}
+ state.v7Content=c;
+}
+
 const V7_CONTRACT_TEMPLATES=[
 ["護送路の再調査","safe","安全な街道を確認し、物流回復の足掛かりを作る。"],
 ["危険地帯の掃討","battle","危険地帯の敵対集団を退け、地域治安を改善する。"],
@@ -10852,14 +10948,14 @@ function v7AcceptContract(id){
  const a=S.v6Adventure,region=a?.region||S.world?.region,contract=v7ContractsFor(region).find(x=>x.id===id);
  if(!contract||S.v7Content.contracts[id]?.status==="closed"){lg("この依頼は受けられない。");return;}
  if(S.v7Content.contracts[id]?.status==="active"){lg("この地域依頼は受注済み。");return;}
- S.v7Content.contracts[id]={...contract,status:"active",acceptedDay:S.day,acceptedOutcomeCount:Array.isArray(a?.outcomes)?a.outcomes.length:0,acceptedPathLength:Array.isArray(a?.path)?a.path.length:0,result:null};lg("【V7依頼】"+contract.title+"を受託。目標地点："+contract.goal+"。受注後に目標に応じた実行結果が記録されると成功報告できる。");render();
+ S.v7Content.contracts[id]={...contract,status:"active",acceptedDay:S.day,acceptedOutcomeCount:Array.isArray(a?.outcomes)?a.outcomes.length:0,acceptedPathLength:Array.isArray(a?.path)?a.path.length:0,acceptedSerial:Math.max(0,Number(a?.outcomeSerial)||0),acceptedVisitedGoal:Number(a?.visited?.[contract.goal])||0,acceptedVisitedDanger:Number(a?.visited?.danger)||0,acceptedVisitedFinale:Number(a?.visited?.finale)||0,result:null};lg("【V7依頼】"+contract.title+"を受託。目標地点："+contract.goal+"。受注後に目標に応じた実行結果が記録されると成功報告できる。");render();
 }
 function v7ResolveContract(id,result){
  v7EnsureContent();const q=S.v7Content.contracts[id];if(!q||q.status!=="active"||!S.away||S.battle){lg("報告できる状態ではない。");return;}
  const a=S.v6Adventure;
  if(!a||!a.active||a.region!==q.region){lg("対象地域の遠征中でなければ報告できない。");return;}
  if(!["success","partial","retreat"].includes(result)){lg("不正な依頼報告形式。");return;}
- const fresh=(Array.isArray(a.outcomes)?a.outcomes:[]).slice(Math.max(0,Number(q.acceptedOutcomeCount)||0));
+ const fresh=(Array.isArray(a.outcomes)?a.outcomes:[]).filter(e=>Number(e?.serial)>Math.max(0,Number(q.acceptedSerial)||0));
  const evidence=fresh.filter(e=>e&&(!e.region||e.region===q.region));
  const at=(type,node)=>evidence.some(e=>e.type===type&&(!node||e.node===node));
  const verified=({
@@ -10872,8 +10968,7 @@ function v7ResolveContract(id,result){
    gather:()=>at("gather")||evidence.some(e=>e.type==="v7_local_event"&&["safe","wild"].includes(e.node))
  })[q.goal];
  const goalDone=!!(verified&&verified());
- const afterPath=(Array.isArray(a.path)?a.path:[]).slice(Math.max(0,Number(q.acceptedPathLength)||0));
- const reachedGoal=afterPath.includes(q.goal)||(q.goal==="battle"||q.goal==="negotiate")&&afterPath.some(n=>["danger","finale"].includes(n));
+ const reachedGoal=(Number(a.visited?.[q.goal])||0)>(Number(q.acceptedVisitedGoal)||0)||((q.goal==="battle"||q.goal==="negotiate")&&((Number(a.visited?.danger)||0)>(Number(q.acceptedVisitedDanger)||0)||(Number(a.visited?.finale)||0)>(Number(q.acceptedVisitedFinale)||0))); 
  if(result==="success"&&!goalDone){lg("目標に対応する行動・戦闘・調査の完了記録がないため成功報告できない。");return;}
  if(result==="partial"&&!goalDone&&!reachedGoal){lg("目標地点に向けた活動記録がないため部分成功として報告できない。");return;}
  const w=(S.v6World=S.v6World||{})[q.region]||((S.v6World||{})[q.region]={security:0,access:0,trade:0,revisits:0});
