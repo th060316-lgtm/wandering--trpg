@@ -10764,7 +10764,7 @@ function v7RenderSupply(){
 const v7Render0=typeof render==="function"?render:null;
 if(typeof render==="function"){const v7RenderOriginal=render;render=function(){v7RenderOriginal.apply(this,arguments);v7RenderSupply();};}
 try{v7EnsureSupply();v7RenderSupply();}catch(e){console.warn("V7 P0 supply",e);}
-/* V7_P0_SUPPLY_BEGIN */_END
+/* V7_P0_SUPPLY_END */
 
 /* V7_CONTENT_LOOP_BEGIN */
 const V7_CONTRACT_TEMPLATES=[
@@ -10862,7 +10862,7 @@ function v7RenderContent(){
 const v7RenderContent0=render;
 render=function(){v7RenderContent0.apply(this,arguments);v7RenderContent();};
 try{v7EnsureContent();v7RenderContent();}catch(e){console.warn("V7 content loop",e);}
-/* V7_CONTENT_LOOP_BEGIN */_END
+/* V7_CONTENT_LOOP_END */
 </script>
 </body>
 </html>
